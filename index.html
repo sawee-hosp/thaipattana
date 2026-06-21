@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ธนาคารหมู่บ้านไทยพัฒนา (Firebase Version)</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500;700;900&display=swap" rel="stylesheet">
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet">
+<style>
+  body { font-family:'Sarabun',sans-serif; background-color: #f8f9fa; }
+  .main-container { max-width: 900px; margin-top: 20px;}
+  .member-card { background: linear-gradient(to bottom right, #2563eb, #4338ca); color: white; border-radius: 1.5rem; padding: 1.5rem; margin-bottom: 1.5rem; }
+  .mc-amount { font-size: 2.25rem; font-weight: 900; }
+  #globalOverlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255,255,255,0.75); z-index: 999999; align-items: center; justify-content: center; backdrop-filter: blur(2px); }
+  @keyframes fadeInOut { 0% { opacity: 0; transform: translate(-50%, -60%) scale(0.9); } 15% { opacity: 1; transform: translate(-50%, -50%) scale(1); } 85% { opacity: 1; transform: translate(-50%, -50%) scale(1); } 100% { opacity: 0; transform: translate(-50%, -40%) scale(0.9); } }
+</style>
+
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+
+</head>
+<body class="p-4">
+
+<div id="globalOverlay">
+    <div class="text-center p-4 bg-white rounded shadow border">
+        <div class="spinner-border text-primary mb-3"></div>
+        <h5 class="mb-0 text-dark fw-bold" id="overlayText">กำลังโหลดข้อมูล...</h5>
+    </div>
+</div>
+
+<div class="container main-container">
+  <div class="mx-auto text-center mb-4">
+    <h1 class="h2 font-weight-bold mb-4">ธนาคารหมู่บ้านไทยพัฒนา (ระบบใหม่)</h1>
+    <div class="d-flex justify-content-center gap-3 flex-wrap border-bottom pb-4">
+      <button onclick="openTxModal('deposit')" class="btn btn-success btn-lg"><i class="fas fa-plus-circle me-2"></i>ฝากเงิน</button>
+      <button onclick="openTxModal('withdraw')" class="btn btn-danger btn-lg"><i class="fas fa-minus-circle me-2"></i>ถอนเงิน</button>
+    </div>
+  </div>
+
+  <div class="search-section">
+    <div class="input-group mb-3">
+      <input list="memberDatalist" id="searchInput" class="form-control form-control-lg" placeholder="ค้นหาสมาชิกด้วยรหัสหรือชื่อ..." autocomplete="off">
+      <button onclick="handleSearch()" class="btn btn-primary btn-lg"><i class="fas fa-search"></i> ค้นหา</button>
+      <datalist id="memberDatalist"></datalist>
+    </div>
+    <div id="userInfo" class="mb-4"></div>
+  </div>
+</div>
+
+<div class="modal fade" id="modalTx" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content p-3" id="modalTxContent">
+      <div class="modal-header border-0 pb-0">
+        <h5 class="modal-title fw-bold" id="txTitle">ทำรายการ</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div> 
+      <form id="txForm" autocomplete="off" class="mt-2" onsubmit="return false;">
+        <div class="mb-2">
+            <label class="fw-bold">รหัสสมาชิก</label>
+            <input list="memberDatalist" id="txMemberInput" class="form-control form-control-lg" oninput="handleMemberInput()" placeholder="ยิงบาร์โค้ด หรือ พิมพ์รหัส...">
+        </div>
+        <div class="row mb-2 px-2">
+             <div class="col-6 p-1 bg-light rounded border"><small class="text-muted d-block">ชื่อสมาชิก:</small><div id="txNameDisplay" class="fw-bold text-truncate">-</div></div>
+             <div class="col-6 p-1 bg-light rounded border text-end"><small class="text-muted d-block">ยอดยกมา:</small><div id="txBalance" class="fw-bold text-primary">-</div></div>
+        </div>
+        <div class="mb-3">
+            <label class="fw-bold mb-2">จำนวนเงิน</label>
+            <input id="txAmount" type="number" class="form-control form-control-lg text-end fw-bold" placeholder="0">
+        </div>
+        <button class="btn btn-primary w-100 btn-lg" onclick="saveTransaction()"><i class="fas fa-save me-2"></i>บันทึกรายการ</button>
+      </form>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+// =========================================================
+// 1. นำข้อมูลจาก Firebase มาใส่ (สังเกตว่าผมเติมโปรเจกต์คุณให้แล้ว)
+// =========================================================
+const firebaseConfig = {
+  apiKey: "AIzaSyCrIC4ggpWddN3Vl9EBbeLDUkiMVToQU0o", // <--- ⚠️ แก้ไขแค่บรรทัดนี้ (หาได้จาก รูปเฟือง > Project settings > เลื่อนลงมาล่างสุดที่ Web apps)
+  authDomain: "thai-pat-bank.firebaseapp.com",
+  databaseURL: "https://thai-pat-bank-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "thai-pat-bank"
+};
+
+// =========================================================
+// 2. นำ Web App URL ของ GAS มาวางตรงนี้เพื่อส่ง LINE
+// =========================================================
+const GAS_WEBHOOK_URL = "https://script.google.com/macros/s/AKfycbwuEj8gc_1bSGOpjUtgvNtWvy8O0nU-sVwX0H4KTf-8KZMTvE8mAW5-sOIrMhP3Dt4xDQ/exec; // <--- ⚠️ แก้ไขบรรทัดนี้
+
+// Initialize Firebase
+if (!firebase.apps.length) { firebase.initializeApp(firebaseConfig); }
+const db = firebase.database();
+
+let membersCache = {};
+let txModalType = 'deposit';
+let txModalInstance;
+
+window.onload = () => {
+    txModalInstance = new bootstrap.Modal(document.getElementById('modalTx'));
+    loadInitialData(); 
+};
+
+function showLoading() { document.getElementById('globalOverlay').style.display = 'flex'; }
+function hideLoading() { document.getElementById('globalOverlay').style.display = 'none'; }
+
+function showCustomToast(message) {
+    const toast = document.createElement('div');
+    toast.className = `position-fixed top-50 start-50 translate-middle p-4 rounded-4 shadow-lg text-white bg-success`;
+    toast.style.zIndex = '1000000';
+    toast.style.animation = 'fadeInOut 1.5s forwards';
+    toast.innerHTML = `<h5 class="mb-0"><i class="fas fa-check-circle me-2"></i>${message}</h5>`;
+    document.body.appendChild(toast);
+    setTimeout(() => toast.remove(), 1500); 
+}
+
+function loadInitialData() {
+    showLoading();
+    db.ref('Members').once('value').then((snapshot) => {
+        membersCache = snapshot.val() || {};
+        const datalist = document.getElementById('memberDatalist');
+        datalist.innerHTML = '';
+        for (let mId in membersCache) {
+            const option = document.createElement('option');
+            option.value = mId + ' | ' + membersCache[mId].name;
+            datalist.appendChild(option);
+        }
+        hideLoading();
+    }).catch(err => { hideLoading(); alert("เชื่อมต่อฐานข้อมูลขัดข้อง: " + err.message); });
+}
+
+function handleSearch() {
+    const mId = document.getElementById('searchInput').value.split('|')[0].trim().toUpperCase();
+    if (!mId || !membersCache[mId]) { alert("ไม่พบข้อมูลสมาชิก"); return; }
+    
+    const member = membersCache[mId];
+    document.getElementById('userInfo').innerHTML = `
+    <div class="member-card shadow">
+        <span class="badge bg-light text-dark mb-2">${mId}</span>
+        <h3 class="fw-bold mb-1">${member.name}</h3>
+        <div><small class="text-uppercase fw-bold opacity-75">ยอดเงินคงเหลือปัจจุบัน</small><div class="mc-amount">฿${Number(member.balance || 0).toLocaleString('th-TH')}</div></div>
+    </div>`;
+}
+
+function openTxModal(type) {
+    txModalType = type;
+    document.getElementById('txForm').reset();
+    document.getElementById('txNameDisplay').textContent = '-';
+    document.getElementById('txBalance').textContent = '-';
+    document.getElementById('txTitle').textContent = type === 'deposit' ? 'ฝากเงินเข้าบัญชี' : 'ถอนเงินจากบัญชี';
+    
+    // เปลี่ยนสี Modal ให้ชัดเจน
+    document.getElementById('modalTxContent').style.backgroundColor = type === 'deposit' ? '#e9fce3' : '#ffeaea';
+    txModalInstance.show();
+}
+
+function handleMemberInput() {
+    const mId = document.getElementById('txMemberInput').value.split('|')[0].trim().toUpperCase();
+    if (membersCache[mId]) {
+        document.getElementById('txNameDisplay').textContent = membersCache[mId].name;
+        document.getElementById('txBalance').textContent = Number(membersCache[mId].balance || 0).toLocaleString();
+        if (txModalType === 'deposit') document.getElementById('txAmount').value = membersCache[mId].monthly_share || 0;
+    } else {
+        document.getElementById('txNameDisplay').textContent = 'รอรหัส...';
+        document.getElementById('txBalance').textContent = '-';
+    }
+}
+
+function saveTransaction() {
+    const mId = document.getElementById('txMemberInput').value.split('|')[0].trim().toUpperCase();
+    const amount = parseFloat(document.getElementById('txAmount').value) || 0;
+    
+    if (!membersCache[mId] || amount <= 0) { alert("กรุณาใส่ข้อมูลให้ครบ"); return; }
+
+    const currentBalance = Number(membersCache[mId].balance || 0);
+    const newBalance = txModalType === 'deposit' ? currentBalance + amount : currentBalance - amount;
+    
+    const prefix = txModalType === 'deposit' ? 'DP' : 'WD';
+    const numPart = mId.replace(/[^0-9]/g, '');
+    const dateStr = new Date().toISOString().replace(/[-:T.]/g, '').substring(2,14); 
+    const txId = prefix + numPart + dateStr;
+
+    let updates = {};
+    updates['/Transactions/' + txId] = {
+        date: new Date().toISOString(),
+        memberId: mId,
+        type: txModalType === 'deposit' ? 'ฝากหุ้น' : 'ถอนหุ้น',
+        amount: amount,
+        balanceAfter: newBalance
+    };
+    updates['/Members/' + mId + '/balance'] = newBalance;
+
+    // 1. บันทึกลง Firebase
+    db.ref().update(updates).then(() => {
+        membersCache[mId].balance = newBalance;
+        showCustomToast(`บันทึก ${amount} บาท สำเร็จ!`);
+        txModalInstance.hide();
+        
+        const searchBox = document.getElementById('searchInput').value;
+        if (searchBox.includes(mId)) handleSearch();
+
+        // 2. ยิงไปหา Google Apps Script เพื่อส่ง LINE แจ้งเตือน
+        fetch(GAS_WEBHOOK_URL, {
+            method: 'POST',
+            body: JSON.stringify({
+                memberId: mId,
+                type: txModalType,
+                amount: amount,
+                newBalance: newBalance,
+                userId: membersCache[mId].userId // ดึง userId (LINE) จาก Firebase ส่งไปให้ GAS
+            })
+        });
+        
+    }).catch(error => { alert("เกิดข้อผิดพลาด: " + error.message); });
+}
+</script>
+</body>
+</html>
