@@ -4,11 +4,14 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>ธนาคารหมู่บ้านไทยพัฒนา</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>💰</text></svg>">
 
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
 <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500;700;900&display=swap" rel="stylesheet">
 <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 
 <style>
   body { font-family:'Sarabun',sans-serif; background-color: #f8f9fa; }
@@ -25,6 +28,7 @@
   #modalTx { z-index: 1070 !important; } 
   #editModal { z-index: 1080 !important; }
   #memberModal { z-index: 1090 !important; }
+  #settingsModal { z-index: 1100 !important; }
   
   @keyframes fadeInOut {
       0% { opacity: 0; transform: translate(-50%, -60%) scale(0.9); }
@@ -35,21 +39,19 @@
 
   #globalOverlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255,255,255,0.75); z-index: 999999; align-items: center; justify-content: center; backdrop-filter: blur(2px); }
 
-  .member-card { position: relative; overflow: hidden; background: linear-gradient(to bottom right, #2563eb, #4338ca); color: white; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04); border-radius: 1.5rem; padding: 1.5rem; margin-bottom: 1.5rem; }
-  .member-card-circle { position: absolute; bottom: -1.5rem; right: -1.5rem; background-color: rgba(255, 255, 255, 0.1); width: 6rem; height: 6rem; border-radius: 50%; pointer-events: none; }
-  .mc-badge { background-color: rgba(255, 255, 255, 0.2); padding: 0.25rem 0.75rem; border-radius: 0.5rem; font-size: 0.75rem; font-family: monospace; }
-  .mc-label { font-size: 10px; color: #dbeafe; text-transform: uppercase; }
-  .mc-status { font-weight: bold; font-size: 0.875rem; }
-  .mc-name { font-size: 1.5rem; font-weight: bold; margin-bottom: 0.25rem; }
-  .mc-phone { font-size: 0.875rem; color: #dbeafe; opacity: 0.8; }
-  .mc-balance-label { font-size: 10px; color: #dbeafe; text-transform: uppercase; font-weight: bold; margin-bottom: 0.25rem; }
-  .mc-currency { font-size: 0.875rem; opacity: 0.6; font-weight: 500; }
-  .mc-amount { font-size: 2.25rem; font-weight: 900; letter-spacing: -0.05em; }
-  .mc-btn { background-color: rgba(255, 255, 255, 0.2); border: none; color: white; padding: 0.5rem 0.75rem; border-radius: 0.5rem; font-size: 0.75rem; font-weight: bold; box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05); transition: background-color 0.2s; }
-  .mc-btn:hover { background-color: rgba(255, 255, 255, 0.3); }
-
-  .line-profile-badge { display: inline-flex; align-items: center; background: rgba(6, 193, 95, 0.15); border: 1px solid rgba(6, 193, 95, 0.4); border-radius: 50px; padding: 4px 12px; margin-top: 8px; font-size: 0.8rem; color: #fff; }
-  .line-profile-avatar { width: 20px; height: 20px; border-radius: 50%; margin-right: 6px; object-fit: cover; background-color: #ddd; }
+  /* 💳 ปรับดีไซน์บัตรสมาชิก (ID Card Style) */
+  .member-card { position: relative; overflow: hidden; background: linear-gradient(135deg, #1e3a8a, #3b82f6); color: white; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04); border-radius: 1rem; padding: 1.5rem; margin-bottom: 1.5rem; display: flex; align-items: stretch; gap: 1rem; }
+  .member-card-circle { position: absolute; bottom: -2rem; right: -2rem; background-color: rgba(255, 255, 255, 0.1); width: 8rem; height: 8rem; border-radius: 50%; pointer-events: none; z-index: 0; }
+  .mc-photo-container { position: relative; z-index: 10; width: 90px; flex-shrink: 0; text-align: center; }
+  .mc-photo { width: 90px; height: 110px; object-fit: cover; border-radius: 8px; border: 2px solid rgba(255,255,255,0.8); background-color: #cbd5e1; margin-bottom: 8px; }
+  .mc-info-container { position: relative; z-index: 10; flex-grow: 1; display: flex; flex-direction: column; justify-content: space-between; }
+  .mc-badge { background-color: rgba(255, 255, 255, 0.2); padding: 0.25rem 0.75rem; border-radius: 0.5rem; font-size: 0.85rem; font-family: monospace; font-weight: bold; display: inline-block; }
+  .mc-status { font-weight: bold; font-size: 0.85rem; float: right; background: rgba(0,0,0,0.2); padding: 0.2rem 0.6rem; border-radius: 1rem; }
+  .mc-name { font-size: 1.4rem; font-weight: bold; margin-bottom: 0.25rem; line-height: 1.2; mt-2; }
+  .mc-phone { font-size: 0.875rem; color: #e0e7ff; opacity: 0.9; }
+  .mc-balance-label { font-size: 10px; color: #dbeafe; text-transform: uppercase; font-weight: bold; margin-bottom: 0; }
+  .mc-currency { font-size: 1rem; opacity: 0.8; font-weight: 500; margin-right: 2px; }
+  .mc-amount { font-size: 2rem; font-weight: 900; letter-spacing: -0.05em; line-height: 1; }
 
   /* 🔒 Passcode Screen */
   #loginOverlay { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background-color: #1e293b; z-index: 10000000; display: flex; align-items: center; justify-content: center; }
@@ -83,28 +85,39 @@
     </div>
 </div>
 
-<div id="matrixContextMenu" class="dropdown-menu shadow-sm p-2" style="display:none; position:fixed; z-index:10000; min-width: 150px;">
+<div class="position-absolute top-0 end-0 p-3" style="z-index: 1050;">
+    <button class="btn btn-link text-secondary text-decoration-none fw-bold" onclick="openSettingsModal()"><i class="fas fa-cog"></i> ตั้งค่า</button>
+</div>
+
+<div id="yearlyContextMenu" class="dropdown-menu shadow-sm p-2" style="display:none; position:fixed; z-index:10000; min-width: 150px;">
     <h6 class="dropdown-header px-1 text-primary" id="ctxMenuTitle"></h6>
     <hr class="my-1">
-    <a href="#" class="dropdown-item text-success fw-bold rounded" id="btnMatrixDep"><i class="fas fa-plus-circle me-2"></i>เพิ่มฝากเงิน</a>
-    <a href="#" class="dropdown-item text-danger fw-bold rounded" id="btnMatrixWd"><i class="fas fa-minus-circle me-2"></i>เพิ่มถอนเงิน</a>
+    <a href="#" class="dropdown-item text-success fw-bold rounded" id="btnYearlyDep"><i class="fas fa-plus-circle me-2"></i>เพิ่มฝากเงิน</a>
+    <a href="#" class="dropdown-item text-danger fw-bold rounded" id="btnYearlyWd"><i class="fas fa-minus-circle me-2"></i>เพิ่มถอนเงิน</a>
 </div>
 
 <div id="homePage" class="container main-container">
   <div class="mx-auto text-center mb-4">
     <h1 class="h2 font-weight-bold mb-4">ธนาคารหมู่บ้านไทยพัฒนา</h1>
-    <div class="d-flex justify-content-center gap-3 mb-4 flex-wrap border-bottom pb-4">
+    <div class="d-flex justify-content-center gap-2 mb-3 flex-wrap">
       <button id="btnDeposit" class="btn btn-success"><i class="fas fa-plus-circle me-2"></i>เพิ่มฝากเงิน</button>
       <button id="btnWithdraw" class="btn btn-danger"><i class="fas fa-minus-circle me-2"></i>เพิ่มถอนเงิน</button>
       <button id="btnLoan" class="btn btn-warning text-dark"><i class="fas fa-money-check-alt me-2"></i>อนุมัติเงินกู้</button>
       <button id="btnDashboard" class="btn btn-info text-white"><i class="fas fa-chart-line me-2"></i>แดชบอร์ด</button>
       <button id="btnNewAccount" class="btn btn-primary"><i class="fas fa-user-plus me-2"></i>เปิดบัญชีใหม่</button>
     </div>
+    
+    <div id="homeMiniCards" class="row mt-3 mb-4 d-none text-center">
+        <div class="col-6 col-md-3 mb-2"><div class="card p-2 border-success shadow-sm"><small class="text-muted">ฝากเดือนนี้</small><h5 class="text-success mb-0 fw-bold" id="miniDep">0</h5></div></div>
+        <div class="col-6 col-md-3 mb-2"><div class="card p-2 border-danger shadow-sm"><small class="text-muted">ถอนเดือนนี้</small><h5 class="text-danger mb-0 fw-bold" id="miniWd">0</h5></div></div>
+        <div class="col-6 col-md-3 mb-2"><div class="card p-2 border-primary shadow-sm"><small class="text-muted">สุทธิเดือนนี้</small><h5 class="text-primary mb-0 fw-bold" id="miniNet">0</h5></div></div>
+        <div class="col-6 col-md-3 mb-2"><div class="card p-2 border-info shadow-sm bg-info-subtle"><small class="text-muted">บัญชี Active</small><h5 class="text-dark mb-0 fw-bold" id="miniAct">0</h5></div></div>
+    </div>
   </div>
 
-  <div class="search-section">
+  <div class="search-section border-top pt-4">
     <div class="input-group mb-3">
-      <input list="memberDatalist" id="searchInput" class="form-control form-control-lg" placeholder="ค้นหาสมาชิกด้วยรหัสหรือชื่อ (พิมพ์แค่ 1 ก็เจอ TP0001)..." autocomplete="off">
+      <input list="memberDatalist" id="searchInput" class="form-control form-control-lg" placeholder="ค้นหาสมาชิกด้วยรหัสหรือชื่อ..." autocomplete="off">
       <button id="searchBtn" class="btn btn-primary btn-lg"><i class="fas fa-search"></i> ค้นหา</button>
       <datalist id="memberDatalist"></datalist>
     </div>
@@ -138,7 +151,7 @@
     
     <ul class="nav nav-tabs" id="dashboardTab" role="tablist">
         <li class="nav-item"><button class="nav-link active" data-tab-name="Overview" data-bs-toggle="tab" data-bs-target="#overview-pane">ภาพรวม</button></li>
-        <li class="nav-item"><button class="nav-link" data-tab-name="YearlyMatrix" data-bs-toggle="tab" data-bs-target="#yearly-matrix-pane">สรุปยอดทั้งปี (Matrix)</button></li>
+        <li class="nav-item"><button class="nav-link" data-tab-name="YearlyTable" data-bs-toggle="tab" data-bs-target="#yearly-table-pane">สรุปยอดทั้งปี</button></li>
         <li class="nav-item"><button class="nav-link" data-tab-name="History" data-bs-toggle="tab" data-bs-target="#history-pane">ประวัติทำรายการ</button></li>
         <li class="nav-item"><button class="nav-link" data-tab-name="LoanManage" data-bs-toggle="tab" data-bs-target="#loan-manage-pane">จัดการเงินกู้</button></li>
         <li class="nav-item"><button class="nav-link" data-tab-name="MemberStatus" data-bs-toggle="tab" data-bs-target="#member-status-pane">สถานะบัญชี</button></li>
@@ -155,12 +168,12 @@
             </div>
         </div>
 
-        <div class="tab-pane fade" id="yearly-matrix-pane">
+        <div class="tab-pane fade" id="yearly-table-pane">
             <div class="d-flex justify-content-between mb-2">
                 <div><small class="text-primary"><i class="fas fa-info-circle me-1"></i> คลิกที่ช่องตารางเดือน เพื่อทำรายการย้อนหลังอัตโนมัติ</small></div>
-                <button class="btn btn-secondary btn-sm" onclick="printMatrixIsolated()"><i class="fas fa-print me-1"></i> พิมพ์ตารางรายงาน (A4 แนวนอน)</button>
+                <button class="btn btn-secondary btn-sm" onclick="printYearlyTable()"><i class="fas fa-print me-1"></i> พิมพ์ตารางรายงาน (A4 แนวนอน)</button>
             </div>
-            <div class="table-responsive" style="max-height: 70vh;" id="matrixPrintArea">
+            <div class="table-responsive" style="max-height: 70vh;" id="yearlyPrintArea">
                 <table class="table table-bordered table-sm small text-center table-hover" style="min-width: 1600px;">
                     <thead class="table-light sticky-top">
                         <tr>
@@ -172,7 +185,7 @@
                             <th>ก.ค.</th><th>ส.ค.</th><th>ก.ย.</th><th>ต.ค.</th><th>พ.ย.</th><th>ธ.ค.</th>
                         </tr>
                     </thead>
-                    <tbody id="yearlyMatrixBody"></tbody>
+                    <tbody id="yearlyTableBody"></tbody>
                 </table>
             </div>
         </div>
@@ -201,7 +214,7 @@
       <form id="txForm" autocomplete="off" class="mt-2" onsubmit="return false;">
         <div class="mb-2">
             <label class="fw-bold">รหัสสมาชิก <span class="text-danger">*</span></label>
-            <input list="memberDatalist" id="txMemberInput" class="form-control form-control-lg" placeholder="ยิงบาร์โค้ด หรือ พิมพ์รหัส (พิมพ์แค่ 1 ก็ได้)...">
+            <input list="memberDatalist" id="txMemberInput" class="form-control form-control-lg" placeholder="ยิงบาร์โค้ด หรือ พิมพ์รหัส...">
         </div>
         <div class="row mb-2 px-2">
              <div class="col-6 p-1 bg-light rounded border"><small class="text-muted d-block">ชื่อสมาชิก:</small><div id="txNameDisplay" class="fw-bold text-truncate">-</div></div>
@@ -225,7 +238,41 @@
   </div>
 </div>
 
-<div class="modal fade" id="memberModal" tabindex="-1"><div class="modal-dialog modal-lg"><div class="modal-content"><form id="memberForm" autocomplete="off" onsubmit="return false;"><div class="modal-header"><h5 class="modal-title" id="memberModalTitle"></h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body"><div class="row"><div class="col-md-6 mb-3"><label class="form-label">เลขที่บัญชี</label><input type="text" id="member_id" name="member_id" class="form-control" readonly></div><div class="col-md-6 mb-3"><label class="form-label">ชื่อ-สกุล</label><input type="text" id="full_name" name="full_name" class="form-control" required></div></div><div class="row"><div class="col-md-6 mb-3"><label class="form-label">หุ้นรายเดือน</label><input type="number" id="monthly_share" name="monthly_share" class="form-control"></div><div class="col-md-6 mb-3"><label class="form-label">เบอร์โทรศัพท์</label><input type="tel" id="telephone" name="telephone" class="form-control"></div></div><div class="row"><div class="col-md-6 mb-3"><label class="form-label">วันที่สมัคร</label><input type="date" id="join_date" name="join_date" class="form-control" required></div><div class="col-md-6 mb-3"><label class="form-label">สถานะบัญชี</label><select id="account_status" name="account_status" class="form-select"><option value="ฝากหุ้นต่อเนื่อง">ฝากหุ้นต่อเนื่อง</option><option value="ขาดฝากหุ้น">ขาดฝากหุ้น</option><option value="ปิดบัญชี">ปิดบัญชี</option></select></div></div><div class="row"><div class="col-md-6 mb-3"><label class="form-label">PIN</label><input type="text" id="account_pin" name="account_pin" class="form-control" placeholder="สร้างอัตโนมัติ" readonly></div></div><input type="hidden" id="current_balance" name="current_balance"></div><div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">ยกเลิก</button><button type="submit" id="btnSaveMember" class="btn btn-primary" onclick="handleSaveMember(event)">บันทึกข้อมูล</button></div></form></div></div></div>
+<div class="modal fade" id="memberModal" tabindex="-1"><div class="modal-dialog modal-lg"><div class="modal-content"><form id="memberForm" autocomplete="off" onsubmit="return false;"><div class="modal-header"><h5 class="modal-title" id="memberModalTitle"></h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body"><div class="row"><div class="col-md-6 mb-3"><label class="form-label">เลขที่บัญชี</label><input type="text" id="member_id" name="member_id" class="form-control" readonly></div><div class="col-md-6 mb-3"><label class="form-label">ชื่อ-สกุล</label><input type="text" id="full_name" name="full_name" class="form-control" required></div></div><div class="row"><div class="col-md-6 mb-3"><label class="form-label">หุ้นรายเดือน</label><input type="number" id="monthly_share" name="monthly_share" class="form-control"></div><div class="col-md-6 mb-3"><label class="form-label">เบอร์โทรศัพท์ (ใส่ 0 นำหน้าอัตโนมัติเมื่อบันทึก)</label><input type="tel" id="telephone" name="telephone" class="form-control"></div></div><div class="row"><div class="col-md-6 mb-3"><label class="form-label">วันที่สมัคร</label><input type="date" id="join_date" name="join_date" class="form-control" required></div><div class="col-md-6 mb-3"><label class="form-label">สถานะบัญชี</label><select id="account_status" name="account_status" class="form-select"><option value="ฝากหุ้นต่อเนื่อง">ฝากหุ้นต่อเนื่อง</option><option value="ขาดฝากหุ้น">ขาดฝากหุ้น</option><option value="ปิดบัญชี">ปิดบัญชี</option></select></div></div><div class="row"><div class="col-md-6 mb-3"><label class="form-label text-primary fw-bold">PIN <small class="text-muted">(สำหรับเข้าสู่ระบบของสมาชิก)</small></label><input type="text" id="account_pin" name="account_pin" class="form-control border-primary text-primary fw-bold" readonly></div></div><input type="hidden" id="current_balance" name="current_balance"></div><div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">ยกเลิก</button><button type="submit" id="btnSaveMember" class="btn btn-primary" onclick="handleSaveMember(event)">บันทึกข้อมูล</button></div></form></div></div></div>
+
+<div class="modal fade" id="settingsModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title fw-bold"><i class="fas fa-cog me-2"></i>ตั้งค่าระบบ</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label class="form-label">อัตราดอกเบี้ยเงินฝาก (%)</label>
+                    <input type="number" id="set_interest_dep" class="form-control" step="0.01">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">อัตราดอกเบี้ยเงินกู้ (%)</label>
+                    <input type="number" id="set_interest_loan" class="form-control" step="0.01">
+                </div>
+                <div class="mb-4">
+                    <label class="form-label">เปอร์เซ็นต์ปันผล (%)</label>
+                    <input type="number" id="set_dividend" class="form-control" step="0.01">
+                </div>
+                <hr>
+                <div class="text-center">
+                    <p class="small text-muted mb-2">สำรองข้อมูลทั้งหมดในฐานข้อมูลออกมาเป็นไฟล์ Excel (.xlsx)</p>
+                    <button class="btn btn-success w-100" onclick="backupDataToExcel()"><i class="fas fa-file-excel me-2"></i> สำรองข้อมูล (Download Excel)</button>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">ปิด</button>
+                <button type="button" class="btn btn-primary" onclick="saveSettingsConfig()">บันทึกตั้งค่า</button>
+            </div>
+        </div>
+    </div>
+</div>
 
 <div class="modal fade" id="modalLoan" tabindex="-1"><div class="modal-dialog modal-lg modal-dialog-centered"><div class="modal-content p-3 bg-light"><form id="loanForm" autocomplete="off" onsubmit="return false;"><div class="modal-header border-0 pb-0"><h5 class="modal-title h4 fw-bold"><i class="fas fa-hand-holding-dollar text-warning me-2"></i>อนุมัติเงินกู้</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body"><div class="mb-3"><label for="loanMemberInput" class="form-label">ค้นหาสมาชิก</label><input list="memberDatalist" id="loanMemberInput" class="form-control" autocomplete="off"></div><div class="row"><div class="col-md-6 mb-3"><label for="loanAmount" class="form-label">จำนวนเงินกู้ (บาท)</label><input id="loanAmount" type="number" class="form-control"></div><div class="col-md-6 mb-3"><label for="interestRate" class="form-label">อัตราดอกเบี้ย (% ต่อปี)</label><input id="interestRate" type="number" class="form-control" value="12"></div></div><div class="row"><div class="col-md-6 mb-3"><label for="loanDate" class="form-label">วันที่กู้</label><input id="loanDate" type="date" class="form-control"></div><div class="col-md-6 mb-3"><label for="dueTime" class="form-label">ระยะเวลา (เดือน)</label><input id="dueTime" type="number" class="form-control" value="6"></div></div><hr><div class="row bg-white p-3 rounded"><div class="col-md-4 mb-3"><label for="totalInterest" class="form-label">ดอกเบี้ยรวม (บาท)</label><input id="totalInterest" type="number" class="form-control fw-bold text-danger"></div><div class="col-md-4 mb-3"><label for="dueDate" class="form-label">วันครบกำหนด</label><input id="dueDate" type="date" class="form-control" readonly></div><div class="col-md-4 mb-3"><label for="totalRepayment" class="form-label">ยอดชำระทั้งหมด</label><input id="totalRepayment" type="text" class="form-control bg-body-secondary" readonly></div></div><hr><div class="row"><div class="col-md-6 mb-3"><label class="form-label d-block">ประเภทเงินกู้</label><div class="form-check form-check-inline"><input class="form-check-input" type="radio" name="loanType" id="typeNormal" value="กู้สามัญ" checked><label class="form-check-label" for="typeNormal">กู้สามัญ</label></div><div class="form-check form-check-inline"><input class="form-check-input" type="radio" name="loanType" id="typeEmergency" value="กู้ฉุกเฉิน"><label class="form-check-label" for="typeEmergency">กู้ฉุกเฉิน</label></div></div><div class="col-md-6 mb-3"><label class="form-label d-block">สถานะ</label><div class="form-check form-check-inline"><input class="form-check-input" type="radio" name="loanStatus" id="statusPending" value="ยังไม่ครบกำหนด" checked><label class="form-check-label" for="statusPending">ยังไม่ครบกำหนด</label></div><div class="form-check form-check-inline"><input class="form-check-input" type="radio" name="loanStatus" id="statusPaid" value="จ่ายครบ"><label class="form-check-label" for="statusPaid">จ่ายครบ</label></div><div class="form-check form-check-inline"><input class="form-check-input" type="radio" name="loanStatus" id="statusDefault" value="ผิดนัด"><label class="form-check-label" for="statusDefault">ผิดนัด</label></div></div></div></div><div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">ปิด</button><button type="submit" id="btnLoanSave" class="btn btn-primary" onclick="handleLoanSave(event)">บันทึกเงินกู้</button></div></form></div></div></div>
 
@@ -246,7 +293,7 @@ const firebaseConfig = {
 };
 
 // =========================================================
-// 2. Web App URL ของ GAS (สำหรับส่ง LINE Webhook)
+// 2. Web App URL ของ GAS
 // =========================================================
 const GAS_WEBHOOK_URL = "https://script.google.com/macros/s/AKfycbwuEj8gc_1bSGOpjUtgvNtWvy8O0nU-sVwX0H4KTf-8KZMTvE8mAW5-sOIrMhP3Dt4xDQ/exec";
 
@@ -259,9 +306,9 @@ let currentMemberId = null;
 let currentMemberData = null;
 let txModalType = 'deposit';
 let currentTxMember = null; 
-let addTxModal, addLoanModal, editModal, updateLoanStatusModal, memberModal;
-let chartInstance = null; // เก็บ object ของกราฟไว้เคลียร์ทิ้ง
-let matrixContext = {}; // เก็บข้อมูลเวลาคลิก Cell
+let addTxModal, addLoanModal, editModal, updateLoanStatusModal, memberModal, settingsModal;
+let chartInstance = null; 
+let yearlyContext = {}; 
 
 // 🟢 ตัวแปลงรหัสอัจฉริยะ (พิมพ์ '1' แปลงเป็น 'TP0001' ให้ทันที)
 function parseMemberId(input) {
@@ -271,7 +318,7 @@ function parseMemberId(input) {
     return val;
 }
 
-// 🚀 TRUE REALTIME ARCHITECTURE
+// 🚀 TRUE REALTIME ARCHITECTURE & MINI CARDS UPDATER
 db.ref('Members').on('value', (snapshot) => {
     if (snapshot.exists()) {
         localMemberCache = snapshot.val();
@@ -282,15 +329,43 @@ db.ref('Members').on('value', (snapshot) => {
     }
 });
 
+// Update Mini-cards ทุกครั้งที่ Transaction มีการเคลื่อนไหว
+db.ref('Transactions').on('value', (snapshot) => {
+    if(snapshot.exists()) {
+        document.getElementById('homeMiniCards').classList.remove('d-none');
+        const now = new Date();
+        const curMonthStr = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+        let mDep = 0, mWd = 0;
+        let actAcc = new Set();
+        Object.values(snapshot.val()).forEach(tx => {
+            if(tx.date && tx.date.startsWith(curMonthStr)) {
+                actAcc.add(tx.memberId);
+                if(tx.type === 'ฝากหุ้น' || tx.type === 'ยอดยกมา') mDep += Number(tx.amount);
+                else if(tx.type === 'ถอนหุ้น') mWd += Number(tx.amount);
+            }
+        });
+        document.getElementById('miniDep').textContent = mDep.toLocaleString();
+        document.getElementById('miniWd').textContent = mWd.toLocaleString();
+        document.getElementById('miniNet').textContent = (mDep - mWd).toLocaleString();
+        document.getElementById('miniAct').textContent = actAcc.size.toLocaleString();
+    }
+});
+
 // =========================================================
-// FIREBASE DATA BRIDGE (คำนวณทั้งหมดผ่าน Backend เสมือน)
+// FIREBASE DATA BRIDGE
 // =========================================================
 async function runWithTiming(functionName, ...args) {
     try {
         switch(functionName) {
             case 'checkPasscode': {
                 const snap = await db.ref('Config/PASSCODE').once('value');
-                return args[0] === String(snap.val() || '1234');
+                const pVal = snap.val();
+                let validPass = "1234"; // Default
+                if(pVal) {
+                    if (typeof pVal === 'string' || typeof pVal === 'number') validPass = String(pVal);
+                    else if (pVal.PASSCODE) validPass = String(pVal.PASSCODE);
+                }
+                return args[0] === validPass;
             }
             case 'getInitialData': { return Object.values(localMemberCache); }
             case 'getMemberData': {
@@ -321,7 +396,11 @@ async function runWithTiming(functionName, ...args) {
             }
             case 'saveMember': {
                 const d = args[0]; const mId = parseMemberId(d.member_id);
-                let updateData = { id: mId, name: d.full_name, monthly_share: Number(d.monthly_share), balance: Number(d.current_balance), status: d.account_status, join_date: d.join_date, pin: d.account_pin, telephone: d.telephone };
+                // ⚠️ เติมเลข 0 นำหน้าเบอร์โทรเสมอหากยังไม่มี
+                let tel = d.telephone.trim();
+                if(tel && !tel.startsWith('0')) tel = '0' + tel;
+
+                let updateData = { id: mId, name: d.full_name, monthly_share: Number(d.monthly_share), balance: Number(d.current_balance), status: d.account_status, join_date: d.join_date, pin: d.account_pin, telephone: tel };
                 await db.ref(`Members/${mId}`).update(updateData);
                 return { success: true, message: 'บันทึกสมาชิกเรียบร้อยแล้ว' };
             }
@@ -367,7 +446,6 @@ async function runWithTiming(functionName, ...args) {
                 return { success: true };
             }
 
-            // 🟢 ภาพรวม Dashboard (เพิ่มการดึงข้อมูล Chart.js และนับบัญชี Active)
             case 'getDashboard_Overview': {
                 const period = args[0]; // Format: YYYY-MM
                 const yearSelected = parseInt(period.split('-')[0]);
@@ -376,22 +454,19 @@ async function runWithTiming(functionName, ...args) {
                 const pEnd = new Date(pStart.getFullYear(), pStart.getMonth() + 1, 1);
                 
                 let totalBal = 0, dep = 0, wd = 0, loaned = 0;
-                let activeAccounts = new Set(); // นับบัญชีที่มีความเคลื่อนไหว
+                let activeAccounts = new Set();
                 
                 Object.values(localMemberCache).forEach(m => totalBal += (Number(m.balance) || 0));
                 
-                // สำหรับข้อมูล Chart.js (12 เดือนของปีที่เลือก)
                 let chartData = { dep: Array(12).fill(0), wd: Array(12).fill(0) };
 
                 Object.values(tSnap.val() || {}).forEach(tx => {
                     let d = new Date(tx.date);
-                    // 1. ดึง KPI ประจำเดือน
                     if(d >= pStart && d < pEnd) {
                         activeAccounts.add(tx.memberId);
                         if(tx.type === 'ฝากหุ้น' || tx.type === 'ยอดยกมา') dep += Number(tx.amount);
                         else if(tx.type === 'ถอนหุ้น') wd += Number(tx.amount);
                     }
-                    // 2. ดึงข้อมูลวาดกราฟทั้งปี
                     if(d.getFullYear() === yearSelected) {
                         let m = d.getMonth();
                         if(tx.type === 'ฝากหุ้น' || tx.type === 'ยอดยกมา') chartData.dep[m] += Number(tx.amount);
@@ -425,15 +500,14 @@ async function runWithTiming(functionName, ...args) {
                 return { transactions: list };
             }
 
-            // 🟢 สรุป Matrix ทั้งปี (เพิ่มคำนวณ ยอดรวมปีนี้)
-            case 'getDashboard_YearlyMatrix': {
+            case 'getDashboard_YearlyTable': {
                 const year = parseInt(args[0]);
                 const tSnap = await db.ref('Transactions').once('value');
                 const txs = Object.values(tSnap.val() || {});
                 
                 let activeMembers = [];
                 let compressedTxMap = {};
-                let yearlyTotals = {}; // เก็บยอดเฉพาะของปีที่เลือก
+                let yearlyTotals = {}; 
                 
                 for(let mId in localMemberCache) {
                     activeMembers.push({ id: mId, name: localMemberCache[mId].name, currentBalance: localMemberCache[mId].balance });
@@ -448,7 +522,6 @@ async function runWithTiming(functionName, ...args) {
                         if(!compressedTxMap[mid][monthIdx]) compressedTxMap[mid][monthIdx] = [];
                         compressedTxMap[mid][monthIdx].push({ rIdx: t.id, id: t.id, t: t.type, a: t.amount, d: t.date, n: t.note });
                         
-                        // บวก/ลบยอดของปีนี้
                         if(!yearlyTotals[mid]) yearlyTotals[mid] = 0;
                         if(t.type === 'ฝากหุ้น' || t.type === 'ยอดยกมา') yearlyTotals[mid] += Number(t.amount);
                         else if(t.type === 'ถอนหุ้น') yearlyTotals[mid] -= Number(t.amount);
@@ -563,7 +636,7 @@ document.addEventListener('DOMContentLoaded', () => {
     document.querySelectorAll('#dashboardTab button[data-bs-toggle="tab"]').forEach(tabEl => {
         tabEl.addEventListener('shown.bs.tab', event => {
             const tabName = event.target.dataset.tabName;
-            if (tabName === 'YearlyMatrix') {
+            if (tabName === 'YearlyTable') {
                 document.getElementById('dashboardMonth').classList.add('d-none');
                 document.getElementById('dashboardYear').classList.remove('d-none');
             } else {
@@ -574,8 +647,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
-    // ปิดเมนูคลิกขวาเมื่อคลิกที่อื่น
-    document.addEventListener('click', () => { document.getElementById('matrixContextMenu').style.display = 'none'; });
+    document.addEventListener('click', () => { document.getElementById('yearlyContextMenu').style.display = 'none'; });
 });
 
 function initializeModals() {
@@ -584,6 +656,7 @@ function initializeModals() {
     memberModal = new bootstrap.Modal(document.getElementById('memberModal'));
     addLoanModal = new bootstrap.Modal(document.getElementById('modalLoan'));
     updateLoanStatusModal = new bootstrap.Modal(document.getElementById('updateLoanStatusModal'));
+    settingsModal = new bootstrap.Modal(document.getElementById('settingsModal'));
     document.getElementById('modalTx').addEventListener('shown.bs.modal', function () { document.getElementById('txMemberInput').focus(); });
 }
 
@@ -597,7 +670,6 @@ function bindEventListeners() {
 
     document.getElementById('btnNewAccount').addEventListener('click', openMemberModalForNew);
     document.getElementById('btnEditMember').addEventListener('click', openMemberModalForEdit);
-    document.getElementById('member_id').addEventListener('input', () => { document.getElementById('account_pin').value = calculatePinClientSide(document.getElementById('member_id').value); });
 
     document.getElementById('btnLoan').addEventListener('click', () => { document.getElementById('loanForm').reset(); addLoanModal.show(); });
     if(document.getElementById('saveLoanStatusBtn')) document.getElementById('saveLoanStatusBtn').addEventListener('click', saveNewLoanStatus);
@@ -611,11 +683,10 @@ function bindEventListeners() {
     document.getElementById('saveChangesBtn').addEventListener('click', handleSaveChanges);
     document.getElementById('deleteBtn').addEventListener('click', handleDelete);
     document.getElementById('dashboardMonth').addEventListener('change', () => { const act = document.querySelector('#dashboardTab .nav-link.active')?.dataset.tabName; if (act) loadDashboardTab(act); });
-    document.getElementById('dashboardYear').addEventListener('change', () => loadDashboardTab('YearlyMatrix'));
+    document.getElementById('dashboardYear').addEventListener('change', () => loadDashboardTab('YearlyTable'));
 
-    // Events สำหรับ Context Menu Matrix
-    document.getElementById('btnMatrixDep').addEventListener('click', (e) => handleMatrixAction(e, 'deposit'));
-    document.getElementById('btnMatrixWd').addEventListener('click', (e) => handleMatrixAction(e, 'withdraw'));
+    document.getElementById('btnYearlyDep').addEventListener('click', (e) => handleYearlyAction(e, 'deposit'));
+    document.getElementById('btnYearlyWd').addEventListener('click', (e) => handleYearlyAction(e, 'withdraw'));
 }
 
 function refreshDatalist() {
@@ -715,18 +786,17 @@ async function handleTxSave(e) {
         document.getElementById('txNameDisplay').textContent = '-'; document.getElementById('txBalance').textContent = '-';
         document.getElementById('txPost').textContent = '-';
         
-        // อัปเดต Matrix หากเปิดค้างไว้
         const act = document.querySelector('#dashboardTab .nav-link.active')?.dataset.tabName; 
-        if (act === 'YearlyMatrix') loadDashboardTab('YearlyMatrix');
+        if (act === 'YearlyTable') loadDashboardTab('YearlyTable');
 
         setTimeout(() => { document.getElementById('txMemberInput').focus(); }, 100);
 
+        // ⚠️ การยิงแบบมี Header แต่ให้ข้าม CORS ของ Vercel อย่างสมบูรณ์ 
         fetch(GAS_WEBHOOK_URL, {
             method: 'POST',
-            mode: 'no-cors',
             headers: { 'Content-Type': 'text/plain;charset=utf-8' },
             body: JSON.stringify({ memberId: directMemberId, type: txModalType, amount: amount, newBalance: newBalance, userId: (localMemberCache[directMemberId].lineProfile ? localMemberCache[directMemberId].lineProfile.userId : null) })
-        }).catch(e => console.log('Webhook error'));
+        }).catch(e => console.log('แจ้งเตือน LINE Error'));
 
     } catch(err) { alert("เกิดข้อผิดพลาด: " + err.message); }
 }
@@ -753,16 +823,31 @@ function renderData(data) {
     if(!data || data.error) return;
     const { memberInfo, lineProfile, deposits, withdrawals, loans } = data;
     
-    let lineProfileHtml = (lineProfile && lineProfile.userId) 
-        ? `<div class="line-profile-badge"><img src="${lineProfile.displayPhoto||'#'}" onerror="this.src='https://cdn-icons-png.flaticon.com/512/847/847969.png'" class="line-profile-avatar"><span>เชื่อมต่อกับ LINE: <b>${lineProfile.displayName}</b></span></div>`
-        : `<div class="line-profile-badge bg-secondary"><i class="fab fa-line me-1"></i> <span>ยังไม่ได้ผูกบัญชี LINE</span></div>`;
+    // 💳 แสดงรูปโปรไฟล์สไตล์บัตรประชาชน (มี Default รูปเงา)
+    const avatarSrc = (lineProfile && lineProfile.displayPhoto) ? lineProfile.displayPhoto : 'https://cdn-icons-png.flaticon.com/512/847/847969.png';
 
     document.getElementById('userInfo').innerHTML = `
     <div class="member-card">
         <div class="member-card-circle"></div>
-        <div class="d-flex justify-content-between align-items-start mb-4"><div class="mc-badge">${memberInfo.id}</div><div class="text-end"><div class="mc-label">สถานะบัญชี</div><div class="mc-status">${memberInfo.status}</div></div></div>
-        <div class="mb-4 position-relative" style="z-index: 10;"><div class="mc-name">${memberInfo.name}</div>${memberInfo.telephone ? `<div class="mc-phone"><i class="fas fa-phone me-1"></i> ${memberInfo.telephone}</div>` : ''}${lineProfileHtml}</div>
-        <div class="position-relative d-flex justify-content-between align-items-end" style="z-index: 10;"><div><div class="mc-balance-label">ยอดเงินคงเหลือปัจจุบัน</div><div class="d-flex align-items-baseline gap-1"><span class="mc-currency">฿</span><span class="mc-amount">${formatCurrency(memberInfo.balance).replace(/[^0-9.,-]/g, '').trim()}</span></div></div></div>
+        <div class="mc-photo-container">
+            <img src="${avatarSrc}" class="mc-photo" onerror="this.src='https://cdn-icons-png.flaticon.com/512/847/847969.png'">
+            <button class="btn btn-sm btn-light w-100" style="font-size:10px; font-weight:bold;" onclick="printSticker('${memberInfo.id}', '${memberInfo.pin}')"><i class="fas fa-print"></i> พิมพ์สติกเกอร์</button>
+        </div>
+        <div class="mc-info-container">
+            <div>
+                <div class="mc-badge">${memberInfo.id}</div>
+                <div class="mc-status">${memberInfo.status}</div>
+                <div class="mc-name mt-2">${memberInfo.name}</div>
+                ${memberInfo.telephone ? `<div class="mc-phone"><i class="fas fa-phone me-1"></i> ${memberInfo.telephone}</div>` : ''}
+            </div>
+            <div class="mt-2 text-end">
+                <div class="mc-balance-label">ยอดเงินคงเหลือปัจจุบัน</div>
+                <div class="d-flex align-items-baseline justify-content-end">
+                    <span class="mc-currency">฿</span>
+                    <span class="mc-amount">${formatCurrency(memberInfo.balance).replace(/[^0-9.,-]/g, '').trim()}</span>
+                </div>
+            </div>
+        </div>
     </div>`;
 
     renderList('depositsList', deposits, i => `<a href="#" class="list-group-item list-group-item-action" onclick="openEditModal('${encodeURIComponent(JSON.stringify(i))}')"><span class="float-end text-success fw-bold">${formatCurrency(i.amount)}</span>${formatDate(i.date)}: ${i.type}</a>`);
@@ -777,15 +862,51 @@ function renderList(containerId, items, formatter) {
     container.innerHTML = items.map(formatter).join('');
 }
 
+// 🖨️ ฟังก์ชันพิมพ์สติกเกอร์ (2x5cm) พร้อม QR Code
+function printSticker(memberId, pin) {
+    const qrText = `${memberId}-${pin}`;
+    const printWin = window.open('', '_blank', 'width=400,height=300');
+    if(!printWin) return alert("กรุณาอนุญาต Popup");
+    
+    printWin.document.write(`
+        <!DOCTYPE html><html><head><title>Print Sticker</title>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"><\/script>
+        <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@700&display=swap" rel="stylesheet">
+        <style>
+            @page { size: 5cm 2cm landscape; margin: 0; }
+            body { margin: 0; padding: 2mm 3mm; width: 5cm; height: 2cm; box-sizing: border-box; display: flex; align-items: center; justify-content: space-between; font-family: 'Sarabun', sans-serif; overflow: hidden; background: white; }
+            .info { display: flex; flex-direction: column; justify-content: center; line-height: 1.1; }
+            .title { font-size: 8px; color: #555; margin-bottom: 2px;}
+            .acc { font-size: 14px; font-weight: bold; }
+            .pin { font-size: 12px; font-weight: bold; margin-top: 2px; }
+            #qrcode { width: 1.4cm; height: 1.4cm; flex-shrink: 0; }
+            #qrcode img { width: 100%; height: 100%; }
+        </style>
+        </head><body>
+        <div class="info">
+            <div class="title">ธ.ไทยพัฒนา</div>
+            <div class="acc">${memberId}</div>
+            <div class="pin">PIN: ${pin}</div>
+        </div>
+        <div id="qrcode"></div>
+        <script>
+            new QRCode(document.getElementById("qrcode"), { text: "${qrText}", width: 128, height: 128, colorDark : "#000000", colorLight : "#ffffff", correctLevel : QRCode.CorrectLevel.H });
+            setTimeout(() => { window.print(); window.close(); }, 500);
+        <\/script>
+        </body></html>
+    `);
+    printWin.document.close();
+}
+
 // =========================================================
-// DASHBOARDS, GRAPH AND MATRIX LOGIC
+// DASHBOARDS & YEARLY TABLE LOGIC
 // =========================================================
 async function loadDashboardTab(tabName) {
     showLoading("กำลังโหลดแดชบอร์ด...");
     try {
         const period = document.getElementById('dashboardMonth').value;
         const year = document.getElementById('dashboardYear').value;
-        const data = await runWithTiming('getDashboard_' + tabName, tabName === 'YearlyMatrix' ? year : period);
+        const data = await runWithTiming('getDashboard_' + tabName, tabName === 'YearlyTable' ? year : period);
         
         if(tabName === 'Overview') {
             document.getElementById('kpi-cards').innerHTML = `
@@ -794,7 +915,6 @@ async function loadDashboardTab(tabName) {
                 <div class="col-md-3 mb-3"><div class="card text-center p-3 border-danger shadow-sm"><h6 class="text-muted">ถอนเดือนนี้</h6><h4 class="text-danger">${formatCurrency(data.kpis.withdrawals)}</h4></div></div>
                 <div class="col-md-3 mb-3"><div class="card text-center p-3 border-info shadow-sm bg-info-subtle"><h6 class="text-muted">บัญชีที่ Active (เดือนนี้)</h6><h4 class="text-dark">${data.kpis.activeAccounts} บัญชี</h4></div></div>`;
             
-            // วาดกราฟ Chart.js
             const ctx = document.getElementById('overviewChart').getContext('2d');
             if (chartInstance) chartInstance.destroy();
             chartInstance = new Chart(ctx, {
@@ -811,12 +931,12 @@ async function loadDashboardTab(tabName) {
 
         } else if(tabName === 'History') {
             document.getElementById('historyTableBody').innerHTML = data.transactions.map(tx => `<tr><td>${formatDate(tx.date)}</td><td><div class="fw-bold">${tx.memberName}</div><div class="small text-muted">${tx.memberId}</div></td><td><span class="badge ${tx.type.includes('ฝาก')?'bg-success':'bg-danger'}">${tx.type}</span></td><td>${tx.description || '-'}</td><td class="text-end fw-bold">${formatCurrency(tx.amount)}</td><td class="text-center"><button class="btn btn-sm btn-outline-secondary" onclick="openEditModal('${encodeURIComponent(JSON.stringify({...tx, sheet:'Transactions'}))}')"><i class="fas fa-pencil-alt"></i></button></td></tr>`).join('');
-        } else if(tabName === 'YearlyMatrix') {
-            document.getElementById('yearlyMatrixBody').innerHTML = data.members.map(mem => {
+        } else if(tabName === 'YearlyTable') {
+            document.getElementById('yearlyTableBody').innerHTML = data.members.map(mem => {
                 let yearlyTotal = data.yearlyTotals[mem.id] || 0;
                 let yColor = yearlyTotal >= 0 ? 'text-success' : 'text-danger';
-                let monthsHtml = Array(12).fill(0).map((_,i) => `<td class="p-1 align-middle cursor-pointer hover-bg-light" onclick="openMatrixMenu(event, '${mem.id}', '${encodeURIComponent(mem.name)}', ${i})">${(data.compressedTxMap[mem.id]&&data.compressedTxMap[mem.id][i]) ? data.compressedTxMap[mem.id][i].map(t => `<div class="badge ${t.t==='ฝากหุ้น'||t.t==='ยอดยกมา'?'bg-success-subtle text-success':'bg-danger-subtle text-danger'} border mb-1" onclick="event.stopPropagation(); openEditModal('${encodeURIComponent(JSON.stringify({...t, sheet:'Transactions', amount:t.a, date:t.d, note:t.n, rowIndex:t.id}))}')">${t.a.toLocaleString()}</div>`).join('') : ''}</td>`).join('');
-                return `<tr id="matrix-row-${mem.id}"><td class="sticky-col text-start" style="left:0;"><b>${mem.id}</b></td><td class="sticky-col text-start text-truncate" style="left:60px; max-width:140px;">${mem.name}</td><td class="sticky-col text-end fw-bold text-primary bg-white" style="left:200px;">${formatCurrency(mem.currentBalance)}</td><td class="sticky-col text-end fw-bold ${yColor} bg-warning-subtle" style="left:300px;">${formatCurrency(yearlyTotal)}</td>${monthsHtml}</tr>`;
+                let monthsHtml = Array(12).fill(0).map((_,i) => `<td class="p-1 align-middle cursor-pointer hover-bg-light" onclick="openYearlyMenu(event, '${mem.id}', '${encodeURIComponent(mem.name)}', ${i})">${(data.compressedTxMap[mem.id]&&data.compressedTxMap[mem.id][i]) ? data.compressedTxMap[mem.id][i].map(t => `<div class="badge ${t.t==='ฝากหุ้น'||t.t==='ยอดยกมา'?'bg-success-subtle text-success':'bg-danger-subtle text-danger'} border mb-1" onclick="event.stopPropagation(); openEditModal('${encodeURIComponent(JSON.stringify({...t, sheet:'Transactions', amount:t.a, date:t.d, note:t.n, rowIndex:t.id}))}')">${t.a.toLocaleString()}</div>`).join('') : ''}</td>`).join('');
+                return `<tr id="yearly-row-${mem.id}"><td class="sticky-col text-start" style="left:0;"><b>${mem.id}</b></td><td class="sticky-col text-start text-truncate" style="left:60px; max-width:140px;">${mem.name}</td><td class="sticky-col text-end fw-bold text-primary bg-white" style="left:200px;">${formatCurrency(mem.currentBalance)}</td><td class="sticky-col text-end fw-bold ${yColor} bg-warning-subtle" style="left:300px;">${formatCurrency(yearlyTotal)}</td>${monthsHtml}</tr>`;
             }).join('');
         } else if(tabName === 'LoanManage') {
             document.getElementById('loanManageTableBody').innerHTML = data.loanDataForManagement.map(item => `<tr><td>${item.loanId}</td><td><div>${item.memberName}</div><small class="text-muted">${item.memberId}</small></td><td class="text-end">${formatCurrency(item.loanAmount)}</td><td>${formatDate(item.loanDate)}</td><td>${formatDate(item.dueDate)}</td><td><span class="badge bg-secondary">${item.status}</span></td><td><button class="btn btn-sm btn-outline-primary" onclick="openUpdateLoanStatusModal('${item.loanId}', '${item.status}')"><i class="fas fa-edit"></i></button></td></tr>`).join('');
@@ -826,39 +946,35 @@ async function loadDashboardTab(tabName) {
     } catch(e) {} finally { hideLoading(); }
 }
 
-// 🟢 ระบบคลิกช่องตาราง Matrix ทำรายการย้อนหลัง
-function openMatrixMenu(e, mid, nameStr, monthIdx) {
+// 🟢 ระบบคลิกช่องตารางสรุปยอดทั้งปี
+function openYearlyMenu(e, mid, nameStr, monthIdx) {
     e.preventDefault(); e.stopPropagation();
-    matrixContext = { mid: mid, name: decodeURIComponent(nameStr), monthIdx: monthIdx };
-    
-    // ตั้งชื่อหัวเมนูให้รู้ว่ากำลังแก้ของเดือนไหน
+    yearlyContext = { mid: mid, name: decodeURIComponent(nameStr), monthIdx: monthIdx };
     const mNames = ['มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน','กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม'];
-    document.getElementById('ctxMenuTitle').textContent = `${matrixContext.name} (${mNames[monthIdx]})`;
+    document.getElementById('ctxMenuTitle').textContent = `${yearlyContext.name} (${mNames[monthIdx]})`;
     
-    const menu = document.getElementById('matrixContextMenu');
-    menu.style.left = e.clientX + 'px';
-    menu.style.top = e.clientY + 'px';
+    const menu = document.getElementById('yearlyContextMenu');
+    menu.style.left = e.clientX + 'px'; menu.style.top = e.clientY + 'px';
     menu.style.display = 'block';
 }
 
-function handleMatrixAction(e, type) {
-    e.preventDefault();
-    document.getElementById('matrixContextMenu').style.display = 'none';
+function handleYearlyAction(e, type) {
+    e.preventDefault(); document.getElementById('yearlyContextMenu').style.display = 'none';
     const year = document.getElementById('dashboardYear').value;
-    const monthStr = String(matrixContext.monthIdx + 1).padStart(2, '0');
+    const monthStr = String(yearlyContext.monthIdx + 1).padStart(2, '0');
     
     openTxModal(type);
-    document.getElementById('txMemberInput').value = `${matrixContext.mid} | ${matrixContext.name}`;
-    document.getElementById('txDateInput').value = `${year}-${monthStr}-08T07:00`; // Auto Default Date 
+    document.getElementById('txMemberInput').value = `${yearlyContext.mid} | ${yearlyContext.name}`;
+    document.getElementById('txDateInput').value = `${year}-${monthStr}-08T07:00`; 
     
     handleMemberInputVisuals();
     setTimeout(() => { document.getElementById('txAmount').focus(); }, 100);
 }
 
-// 🟢 พิมพ์ Matrix (A4 แนวนอน)
-function printMatrixIsolated() {
+// 🟢 พิมพ์สรุปยอดทั้งปี (A4 แนวนอน)
+function printYearlyTable() {
     const year = document.getElementById('dashboardYear').value;
-    const htmlContent = document.getElementById('matrixPrintArea').innerHTML;
+    const htmlContent = document.getElementById('yearlyPrintArea').innerHTML;
     const printWin = window.open('', '_blank');
     if(!printWin) return alert("กรุณาอนุญาต Popup");
     
@@ -876,7 +992,7 @@ function printMatrixIsolated() {
         .text-start { text-align: left !important; }
         .text-end { text-align: right !important; }
     </style></head><body>
-    <h2>สรุปรายการเงินฝาก-ถอน (Matrix) ประจำปี ${year}</h2>
+    <h2>สรุปรายการเงินฝาก-ถอน ประจำปี ${year}</h2>
     ${htmlContent.replace(/<div class="badge[^>]*>([\d,.-]+)<\/div>/g, '$1<br>')}
     </body></html>`);
     
@@ -884,14 +1000,57 @@ function printMatrixIsolated() {
     setTimeout(() => { printWin.print(); }, 800);
 }
 
+// =========================================================
+// ตั้งค่า (Settings & Backup)
+// =========================================================
+function openSettingsModal() {
+    showLoading();
+    db.ref('Config').once('value').then(snap => {
+        const conf = snap.val() || {};
+        document.getElementById('set_interest_dep').value = conf.interest_deposit || 0;
+        document.getElementById('set_interest_loan').value = conf.interest_loan || 0;
+        document.getElementById('set_dividend').value = conf.dividend || 0;
+        hideLoading();
+        settingsModal.show();
+    }).catch(e => { hideLoading(); alert(e.message); });
+}
+
+async function saveSettingsConfig() {
+    showLoading();
+    const conf = {
+        interest_deposit: parseFloat(document.getElementById('set_interest_dep').value) || 0,
+        interest_loan: parseFloat(document.getElementById('set_interest_loan').value) || 0,
+        dividend: parseFloat(document.getElementById('set_dividend').value) || 0
+    };
+    try {
+        await db.ref('Config').update(conf);
+        alert('บันทึกการตั้งค่าเรียบร้อยแล้ว');
+        settingsModal.hide();
+    } catch(e) { alert(e.message); } finally { hideLoading(); }
+}
+
+async function backupDataToExcel() {
+    showLoading("กำลังสร้างไฟล์ Excel...");
+    try {
+        const [mSnap, tSnap, lSnap] = await Promise.all([db.ref('Members').once('value'), db.ref('Transactions').once('value'), db.ref('Loans').once('value')]);
+        
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(Object.values(mSnap.val() || {})), "Members");
+        XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(Object.values(tSnap.val() || {})), "Transactions");
+        XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(Object.values(lSnap.val() || {})), "Loans");
+        
+        XLSX.writeFile(wb, `TPBank_Backup_${new Date().toISOString().split('T')[0]}.xlsx`);
+    } catch(e) { alert("เกิดข้อผิดพลาดในการสำรองข้อมูล: " + e.message); } finally { hideLoading(); }
+}
+
 // CRUD Edit Modal etc.
 async function handleLoanSave(e) { e.preventDefault(); const mid = parseMemberId(document.getElementById('loanMemberInput').value); const d = { loan_id: `L${mid.replace(/^TP/,'')}${Date.now().toString().slice(-6)}`, member_id: mid, loan_amount: document.getElementById('loanAmount').value, interest_rate: document.getElementById('interestRate').value, due_time: document.getElementById('dueTime').value, loan_date: document.getElementById('loanDate').value, due_date: document.getElementById('dueDate').value, loan_type: document.querySelector('input[name="loanType"]:checked').value, loan_status: document.querySelector('input[name="loanStatus"]:checked').value }; showLoading(); try { await runWithTiming('saveLoan', d); alert('บันทึกเรียบร้อย'); addLoanModal.hide(); } catch(e){} finally { hideLoading(); } }
 function openEditModal(recordStr) { const record = JSON.parse(decodeURIComponent(recordStr)); document.getElementById('editRowIndex').value = record.rowIndex; document.getElementById('editSheet').value = record.sheet; document.getElementById('editDate').value = toISODateString(record.date || record.loan_date); document.getElementById('editAmount').value = record.amount || record.loan_amount; document.getElementById('editNote').value = record.note || ''; editModal.show(); }
-async function handleSaveChanges() { showLoading(); try { await runWithTiming('updateRowData', document.getElementById('editSheet').value, document.getElementById('editRowIndex').value, { date: document.getElementById('editDate').value, amount: parseFloat(document.getElementById('editAmount').value), note: document.getElementById('editNote').value }); editModal.hide(); alert('บันทึกเรียบร้อย'); if(currentMemberId) handleSearch(); const act = document.querySelector('#dashboardTab .nav-link.active')?.dataset.tabName; if (act === 'YearlyMatrix') loadDashboardTab('YearlyMatrix'); } catch(e){} finally { hideLoading(); } }
-async function handleDelete() { if(!confirm('ยืนยันการลบ? ยอดเงินคงเหลือจะถูกคำนวณใหม่ให้ถูกต้องทันที')) return; showLoading(); try { await runWithTiming('deleteRowData', document.getElementById('editSheet').value, document.getElementById('editRowIndex').value); editModal.hide(); alert('ลบเรียบร้อย'); if(currentMemberId) handleSearch(); const act = document.querySelector('#dashboardTab .nav-link.active')?.dataset.tabName; if (act === 'YearlyMatrix') loadDashboardTab('YearlyMatrix'); } catch(e){} finally { hideLoading(); } }
+async function handleSaveChanges() { showLoading(); try { await runWithTiming('updateRowData', document.getElementById('editSheet').value, document.getElementById('editRowIndex').value, { date: document.getElementById('editDate').value, amount: parseFloat(document.getElementById('editAmount').value), note: document.getElementById('editNote').value }); editModal.hide(); alert('บันทึกเรียบร้อย'); if(currentMemberId) handleSearch(); const act = document.querySelector('#dashboardTab .nav-link.active')?.dataset.tabName; if (act === 'YearlyTable') loadDashboardTab('YearlyTable'); } catch(e){} finally { hideLoading(); } }
+async function handleDelete() { if(!confirm('ยืนยันการลบ? ยอดเงินคงเหลือจะถูกคำนวณใหม่ให้ถูกต้องทันที')) return; showLoading(); try { await runWithTiming('deleteRowData', document.getElementById('editSheet').value, document.getElementById('editRowIndex').value); editModal.hide(); alert('ลบเรียบร้อย'); if(currentMemberId) handleSearch(); const act = document.querySelector('#dashboardTab .nav-link.active')?.dataset.tabName; if (act === 'YearlyTable') loadDashboardTab('YearlyTable'); } catch(e){} finally { hideLoading(); } }
 function openUpdateLoanStatusModal(id, st) { document.getElementById('statusModalLoanId').textContent = id; document.getElementById('saveLoanStatusBtn').dataset.id = id; const r = document.querySelector(`input[name="newLoanStatus"][value="${st}"]`); if(r) r.checked = true; updateLoanStatusModal.show(); }
 async function saveNewLoanStatus() { showLoading(); try { await runWithTiming('updateLoanStatus', document.getElementById('saveLoanStatusBtn').dataset.id, document.querySelector('input[name="newLoanStatus"]:checked').value); updateLoanStatusModal.hide(); loadDashboardTab('LoanManage'); } catch(e){} finally { hideLoading(); } }
-async function openMemberModalForNew() { document.getElementById('memberForm').reset(); document.getElementById('memberModalTitle').textContent = 'เปิดบัญชีสมาชิกใหม่'; document.getElementById('join_date').value = toISODateString(new Date()); document.getElementById('member_id').readOnly = false; showLoading(); try { document.getElementById('member_id').value = await runWithTiming('getNewMemberId'); document.getElementById('member_id').readOnly = true; memberModal.show(); } catch (e) { alert(e.message); } finally { hideLoading(); } }
+async function openMemberModalForNew() { document.getElementById('memberForm').reset(); document.getElementById('memberModalTitle').textContent = 'เปิดบัญชีสมาชิกใหม่'; document.getElementById('join_date').value = toISODateString(new Date()); document.getElementById('member_id').readOnly = false; showLoading(); try { const newId = await runWithTiming('getNewMemberId'); document.getElementById('member_id').value = newId; document.getElementById('account_pin').value = calculatePinClientSide(newId); document.getElementById('member_id').readOnly = true; memberModal.show(); } catch (e) { alert(e.message); } finally { hideLoading(); } }
 function openMemberModalForEdit() { if (!currentMemberData) return; const mem = currentMemberData.memberInfo; document.getElementById('memberModalTitle').textContent = `แก้ไขข้อมูล: ${mem.name}`; document.getElementById('member_id').value = mem.id; document.getElementById('member_id').readOnly = true; document.getElementById('account_pin').value = mem.pin || ''; document.getElementById('full_name').value = mem.name; document.getElementById('monthly_share').value = mem.monthly_share || 0; document.getElementById('telephone').value = mem.telephone || ''; document.getElementById('join_date').value = toISODateString(mem.join_date); document.getElementById('account_status').value = mem.status; document.getElementById('current_balance').value = mem.balance; memberModal.show(); }
 async function handleSaveMember(e) { e.preventDefault(); const formData = Object.fromEntries(new FormData(document.getElementById('memberForm')).entries()); showLoading(); try { await runWithTiming('saveMember', formData); memberModal.hide(); if(currentMemberId === parseMemberId(formData.member_id)) handleSearch(); } catch (e) { alert(e.message); } finally { hideLoading(); } }
 </script>
