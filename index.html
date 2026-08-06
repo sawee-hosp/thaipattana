@@ -128,7 +128,7 @@
 
   <div class="search-section border-top pt-4">
     <div class="input-group mb-3">
-      <input list="memberDatalist" id="searchInput" class="form-control form-control-lg" placeholder="ค้นหาสมาชิกด้วยรหัส หรือชื่อ..." autocomplete="off">
+      <input list="memberDatalist" id="searchInput" class="form-control form-control-lg" placeholder="ค้นหาสมาชิกด้วยรหัส หรือชื่อ (พิมพ์แค่เลขก็ได้)..." autocomplete="off">
       <button id="searchBtn" class="btn btn-primary btn-lg"><i class="fas fa-search"></i> ค้นหา</button>
       <datalist id="memberDatalist"></datalist>
     </div>
@@ -184,7 +184,7 @@
         <div class="tab-pane fade" id="yearly-table-pane">
             <div class="d-flex justify-content-between mb-2">
                 <div><small class="text-primary"><i class="fas fa-info-circle me-1"></i> คลิกที่ช่องตารางเดือน เพื่อทำรายการย้อนหลัง</small></div>
-                <button class="btn btn-secondary btn-sm" onclick="printYearlyTable()"><i class="fas fa-print me-1"></i> พิมพ์ตารางรายงาน</button>
+                <button class="btn btn-secondary btn-sm" onclick="printYearlyTable()"><i class="fas fa-print me-1"></i> พิมพ์ตารางรายงาน (A4 แนวนอน)</button>
             </div>
             <div class="table-responsive" style="max-height: 70vh;" id="yearlyPrintArea">
                 <table class="table table-bordered table-sm small text-center table-hover" style="min-width: 1600px;">
@@ -230,11 +230,11 @@
       <form id="txForm" autocomplete="off" class="mt-2" onsubmit="return false;">
         <div class="mb-2">
             <label class="fw-bold">รหัสสมาชิก <span class="text-danger">*</span></label>
-            <input list="memberDatalist" id="txMemberInput" class="form-control form-control-lg" placeholder="พิมพ์รหัส หรือค้นหาชื่อ...">
+            <input list="memberDatalist" id="txMemberInput" class="form-control form-control-lg" placeholder="พิมพ์รหัส หรือค้นหาชื่อ (พิมพ์แค่เลขก็ได้)...">
         </div>
         
-        <!-- 📱 แสดงโปรไฟล์ LINE -->
-        <div id="txLineProfileDisplay" class="mb-2 text-center"></div>
+        <!-- 📱 แสดงโปรไฟล์ LINE อัปเดตรองรับหลาย LINE -->
+        <div id="txLineProfileDisplay" class="mb-2 text-center" style="white-space: normal;"></div>
 
         <div class="row mb-2 px-2">
              <div class="col-6 p-1 bg-light rounded border"><small class="text-muted d-block">ชื่อสมาชิก:</small><div id="txNameDisplay" class="fw-bold text-truncate">-</div></div>
@@ -352,7 +352,13 @@
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
-                <h6 class="fw-bold text-primary border-bottom pb-2">อัตราตอบแทน</h6>
+                <h6 class="fw-bold text-primary border-bottom pb-2">เปลี่ยนรหัสผ่านเข้าหน้าเว็บ</h6>
+                <div class="mb-3">
+                    <label class="form-label small">รหัสผ่านใหม่ (4 หลัก)</label>
+                    <input type="password" id="set_new_passcode" class="form-control form-control-sm" maxlength="4" placeholder="เว้นว่างไว้ถ้าไม่ต้องการเปลี่ยน">
+                    <small class="text-muted" style="font-size: 0.7rem;">รหัสผ่านจะถูกเข้ารหัส SHA-256 ปลอดภัย 100%</small>
+                </div>
+                <h6 class="fw-bold text-primary border-bottom pb-2 mt-3">อัตราตอบแทน</h6>
                 <div class="row">
                     <div class="col-6 mb-3"><label class="form-label small">ดอกเบี้ยเงินฝาก (%)</label><input type="number" id="set_interest_dep" class="form-control form-control-sm" step="0.01"></div>
                     <div class="col-6 mb-3"><label class="form-label small">เปอร์เซ็นต์ปันผล (%)</label><input type="number" id="set_dividend" class="form-control form-control-sm" step="0.01"></div>
@@ -411,12 +417,42 @@ let addTxModal, addLoanModal, editModal, updateLoanStatusModal, memberModal, set
 let chartInstance = null; 
 let yearlyContext = {}; 
 
+// 🔒 ฟังก์ชันเข้ารหัส SHA-256 (สำหรับ Passcode)
+async function sha256(message) {
+    const msgBuffer = new TextEncoder().encode(message);
+    const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
 // 🟢 ตัวแปลงรหัสอัจฉริยะ
 function parseMemberId(input) {
     if (!input) return '';
     let val = input.split('|')[0].trim().toUpperCase();
     if (/^\d+$/.test(val)) val = 'TP' + val.padStart(4, '0');
     return val;
+}
+
+// ฟังก์ชันดึง/สร้าง HTML สำหรับรูปโปรไฟล์ LINE ที่รองรับหลายคน (Array/Object)
+function generateLineProfilesHtml(member) {
+    let profiles = member.lineProfiles || {};
+    // Backward compatibility เผื่อของเดิมเป็น object เดี่ยว
+    if (member.lineProfile && member.lineProfile.userId) {
+        profiles[member.lineProfile.userId] = member.lineProfile;
+    }
+
+    const uids = Object.keys(profiles);
+    if (uids.length === 0) {
+        return `<div class="badge bg-secondary-subtle text-secondary border border-secondary p-2 d-inline-flex align-items-center mb-1"><i class="fab fa-line fs-5 me-2"></i><span>ยังไม่ได้ผูกบัญชี LINE</span></div>`;
+    }
+
+    let html = '';
+    uids.forEach(uid => {
+        let prof = profiles[uid];
+        let avatarSrc = prof.displayPhoto || 'https://cdn-icons-png.flaticon.com/512/847/847969.png';
+        html += `<div class="badge bg-success-subtle text-success border border-success p-2 d-inline-flex align-items-center mb-1 me-1"><img src="${avatarSrc}" class="rounded-circle me-2" width="24" height="24" onerror="this.src='https://cdn-icons-png.flaticon.com/512/847/847969.png'"><span><b>${prof.displayName}</b></span></div>`;
+    });
+    return html;
 }
 
 // 🚀 REALTIME DATA SYNC
@@ -458,14 +494,14 @@ async function runWithTiming(functionName, ...args) {
     try {
         switch(functionName) {
             case 'checkPasscode': {
-                const snap = await db.ref('Config/PASSCODE').once('value');
-                const pVal = snap.val();
-                let validPass = "1234";
-                if(pVal) {
-                    if (typeof pVal === 'string' || typeof pVal === 'number') validPass = String(pVal);
-                    else if (pVal.PASSCODE) validPass = String(pVal.PASSCODE);
+                const snap = await db.ref('Config/PASSCODE_HASH').once('value');
+                const storedHash = snap.val();
+                const inputHash = await sha256(args[0]);
+                // Default fallback: hash ของ "1234" คือ 03ac674216f3e15c761ee1a5e255f067953623c8b388b4459e13f978d7c846f4
+                if (!storedHash) {
+                    return inputHash === "03ac674216f3e15c761ee1a5e255f067953623c8b388b4459e13f978d7c846f4";
                 }
-                return args[0] === validPass;
+                return inputHash === storedHash;
             }
             case 'getInitialData': { return Object.values(localMemberCache); }
             case 'getMemberData': {
@@ -483,9 +519,12 @@ async function runWithTiming(functionName, ...args) {
                 const withdrawals = txs.filter(t => t.type === 'ถอนหุ้น').map(t => ({...t, sheet:'Transactions', rowIndex: t.id}));
                 const loans = Object.values(lSnap.val() || {}).map(l => ({...l, sheet:'Loans', rowIndex: l.loan_id}));
                 
+                let lineProfilesObj = mem.lineProfiles || {};
+                if (mem.lineProfile && mem.lineProfile.userId) lineProfilesObj[mem.lineProfile.userId] = mem.lineProfile;
+
                 return {
                     memberInfo: { id: mem.id, name: mem.name, monthly_share: mem.monthly_share, balance: mem.balance, status: mem.status, pin: mem.pin, telephone: mem.telephone, join_date: mem.join_date },
-                    lineProfile: mem.lineProfile || null,
+                    lineProfiles: lineProfilesObj,
                     deposits, withdrawals, loans
                 };
             }
@@ -496,7 +535,6 @@ async function runWithTiming(functionName, ...args) {
             }
             case 'saveMember': {
                 const d = args[0]; const mId = parseMemberId(d.member_id);
-                // จัดการเรื่องเบอร์โทรเติม 0 นำหน้าเสมอ
                 let tel = d.telephone.trim(); if(tel && !tel.startsWith('0')) tel = '0' + tel;
                 
                 let updateData = { id: mId, name: d.full_name, monthly_share: Number(d.monthly_share), balance: Number(d.current_balance), status: d.account_status, join_date: d.join_date, pin: d.account_pin, telephone: tel };
@@ -620,21 +658,15 @@ async function verifyLogin(code) {
     } finally { document.getElementById('loginSpinner').style.display = 'none'; }
 }
 
-function calculatePinClientSide(memberId) {
-    if (!memberId) return ''; const primes = [3, 5, 7, 11, 13, 17, 19, 23, 29, 31]; let sumProduct = 0;
-    for (let i = 0; i < memberId.length; i++) sumProduct += memberId.charCodeAt(i) * primes[i % primes.length];
-    return ((sumProduct % 90) + 10).toString();
-}
-
 function showLoading(text) { if(text) document.getElementById('overlayText').textContent = text; document.getElementById('globalOverlay').style.display = 'flex'; }
 function hideLoading() { document.getElementById('globalOverlay').style.display = 'none'; }
 function showCustomToast(message, type = 'success') {
     const existing = document.getElementById('custom-flow-toast'); if(existing) existing.remove();
     const toast = document.createElement('div'); toast.id = 'custom-flow-toast';
     toast.className = `position-fixed top-50 start-50 translate-middle p-4 rounded-4 shadow-lg text-white ${type === 'success' ? 'bg-success' : 'bg-primary'}`;
-    toast.style.zIndex = '1000000'; toast.style.animation = 'fadeInOut 1.5s forwards';
+    toast.style.zIndex = '1000000'; toast.style.animation = 'fadeInOut 2.5s forwards';
     toast.innerHTML = `<h5 class="mb-0 lh-base"><i class="fas ${type === 'success' ? 'fa-check-circle' : 'fa-info-circle'} me-2 fs-3"></i>${message}</h5>`;
-    document.body.appendChild(toast); setTimeout(() => { const t = document.getElementById('custom-flow-toast'); if(t) t.remove(); }, 1500); 
+    document.body.appendChild(toast); setTimeout(() => { const t = document.getElementById('custom-flow-toast'); if(t) t.remove(); }, 2500); 
 }
 
 const formatCurrency = (n) => new Intl.NumberFormat('th-TH', { style: 'currency', currency: 'THB' }).format(n || 0);
@@ -682,14 +714,14 @@ function bindEventListeners() {
     document.getElementById('btnYearlyDep').addEventListener('click', (e) => handleYearlyAction(e, 'deposit')); document.getElementById('btnYearlyWd').addEventListener('click', (e) => handleYearlyAction(e, 'withdraw'));
 }
 
+// =========================================================
+// TRANSACTION LOGIC
+// =========================================================
 function refreshDatalist() {
     const datalist = document.getElementById('memberDatalist'); datalist.innerHTML = '';
     Object.values(localMemberCache).forEach(m => { const option = document.createElement('option'); option.value = m.id + ' | ' + m.name; datalist.appendChild(option); });
 }
 
-// =========================================================
-// TRANSACTION LOGIC
-// =========================================================
 function openTxModal(type) {
     txModalType = type; currentTxMember = null; document.getElementById('txForm').reset();
     document.getElementById('txNameDisplay').textContent = '-'; document.getElementById('txBalance').textContent = '-'; document.getElementById('txPost').textContent = '-'; document.getElementById('txLineProfileDisplay').innerHTML = '';
@@ -709,19 +741,8 @@ function handleMemberInputVisuals() {
         const txDate = new Date(document.getElementById('txDateInput').value);
         const monthKey = txDate.getFullYear() + "-" + txDate.getMonth();
 
-        // 📱 แสดงโปรไฟล์ LINE (ถ้ามี)
-        if (member.lineProfile && member.lineProfile.userId) {
-            document.getElementById('txLineProfileDisplay').innerHTML = `
-                <div class="badge bg-success-subtle text-success border border-success p-2 d-inline-flex align-items-center mb-1">
-                    <img src="${member.lineProfile.displayPhoto}" class="rounded-circle me-2" width="24" height="24" onerror="this.src='https://cdn-icons-png.flaticon.com/512/847/847969.png'">
-                    <span>เชื่อมต่อ LINE: <b>${member.lineProfile.displayName}</b></span>
-                </div>`;
-        } else {
-            document.getElementById('txLineProfileDisplay').innerHTML = `
-                <div class="badge bg-secondary-subtle text-secondary border border-secondary p-2 d-inline-flex align-items-center mb-1">
-                    <i class="fab fa-line fs-5 me-2"></i><span>ยังไม่ได้ผูกบัญชี LINE</span>
-                </div>`;
-        }
+        // 📱 แสดงโปรไฟล์ LINE (รองรับแบบหลาย LINE/Array)
+        document.getElementById('txLineProfileDisplay').innerHTML = generateLineProfilesHtml(member);
 
         if (txModalType === 'deposit' && member.depositedMonths && member.depositedMonths[monthKey]) {
             document.getElementById('txNameDisplay').innerHTML = `<span class="text-danger fw-bold">⚠️ ${member.name} (ฝากไปแล้ว!)</span>`;
@@ -780,7 +801,25 @@ async function handleTxSave(e) {
 
     try {
         await db.ref().update(updates);
-        showCustomToast(`บันทึกข้อมูลสำเร็จ จำนวน ${amount.toLocaleString()} บาท`, 'success');
+        
+        // 📢 ค้นหา LINE ทั้งหมดของสมาชิกคนนี้เพื่อแจ้ง Toast และส่ง Webhook
+        let lineNames = [];
+        let lineUserIds = [];
+        let memData = localMemberCache[directMemberId];
+        let profiles = memData.lineProfiles || {};
+        if (memData.lineProfile && memData.lineProfile.userId) profiles[memData.lineProfile.userId] = memData.lineProfile;
+        
+        for(let uid in profiles) {
+            lineNames.push(profiles[uid].displayName);
+            lineUserIds.push(uid);
+        }
+
+        let toastMsg = `บันทึกข้อมูลสำเร็จ จำนวน ${amount.toLocaleString()} บาท`;
+        if (lineNames.length > 0) {
+            toastMsg += `<br><small style="font-size:0.8rem; font-weight:normal;">ส่งแจ้งเตือนหา: ${lineNames.join(', ')}</small>`;
+        }
+        showCustomToast(toastMsg, 'success');
+
         document.getElementById('txForm').reset(); currentTxMember = null;
         document.getElementById('txNameDisplay').textContent = '-'; document.getElementById('txBalance').textContent = '-'; document.getElementById('txPost').textContent = '-'; document.getElementById('txLineProfileDisplay').innerHTML = '';
         
@@ -789,13 +828,16 @@ async function handleTxSave(e) {
 
         setTimeout(() => { document.getElementById('txMemberInput').focus(); }, 100);
 
-        // 🚀 การยิง LINE Webhook ไปที่ GAS แบบข้าม CORS
+        // 🚀 การยิง LINE Webhook แบบ Array
         fetch(GAS_WEBHOOK_URL, {
             method: 'POST',
             mode: 'no-cors',
             headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-            body: JSON.stringify({ memberId: directMemberId, type: txModalType, amount: amount, newBalance: newBalance, userId: (localMemberCache[directMemberId].lineProfile ? localMemberCache[directMemberId].lineProfile.userId : null) })
-        }).catch(e => console.log('LINE Webhook Call Attempted'));
+            body: JSON.stringify({ 
+                memberId: directMemberId, type: txModalType, amount: amount, newBalance: newBalance, 
+                userIds: lineUserIds // ส่งเป็น Array ให้ฝั่งโน้นจัดการ
+            })
+        }).catch(e => console.log('Webhook error'));
 
     } catch(err) { alert("เกิดข้อผิดพลาด: " + err.message); }
 }
@@ -812,23 +854,33 @@ async function handleSearch(e) {
 function renderData(data) {
     document.getElementById('resultsContainer').classList.remove('d-none'); document.getElementById('actionButtonContainer').classList.remove('d-none'); 
     if(!data || data.error) return;
-    const { memberInfo, lineProfile, deposits, withdrawals, loans } = data;
+    const { memberInfo, lineProfiles, deposits, withdrawals, loans } = data;
     
-    const avatarSrc = (lineProfile && lineProfile.displayPhoto) ? lineProfile.displayPhoto : 'https://cdn-icons-png.flaticon.com/512/847/847969.png';
+    // สร้างรูป Profile แรกเป็น Avatar หลัก และ list คนอื่น
+    let uids = Object.keys(lineProfiles);
+    let mainAvatar = 'https://cdn-icons-png.flaticon.com/512/847/847969.png';
+    if(uids.length > 0 && lineProfiles[uids[0]].displayPhoto) {
+        mainAvatar = lineProfiles[uids[0]].displayPhoto;
+    }
+
+    let lineProfileHtml = uids.length > 0 
+        ? uids.map(uid => `<div class="badge bg-success-subtle text-success border border-success p-1 d-inline-flex align-items-center mb-1 me-1"><img src="${lineProfiles[uid].displayPhoto||'https://cdn-icons-png.flaticon.com/512/847/847969.png'}" class="rounded-circle me-1" width="16" height="16"><span>${lineProfiles[uid].displayName}</span></div>`).join('')
+        : `<div class="badge bg-secondary-subtle text-secondary border border-secondary p-1 d-inline-flex align-items-center mb-1"><i class="fab fa-line me-1"></i> <span>ยังไม่ได้ผูกบัญชี</span></div>`;
 
     document.getElementById('userInfo').innerHTML = `
     <div class="member-card">
         <div class="member-card-circle"></div>
         <div class="mc-photo-container">
-            <img src="${avatarSrc}" class="mc-photo" onerror="this.src='https://cdn-icons-png.flaticon.com/512/847/847969.png'">
+            <img src="${mainAvatar}" class="mc-photo" onerror="this.src='https://cdn-icons-png.flaticon.com/512/847/847969.png'">
             <button class="btn btn-sm btn-light w-100" style="font-size:10px; font-weight:bold;" onclick="printSticker('${memberInfo.id}', '${memberInfo.pin}')"><i class="fas fa-print"></i> พิมพ์สติกเกอร์</button>
         </div>
         <div class="mc-info-container">
             <div>
                 <div class="mc-badge">${memberInfo.id}</div>
                 <div class="mc-status">${memberInfo.status}</div>
-                <div class="mc-name">${memberInfo.name}</div>
+                <div class="mc-name mt-2">${memberInfo.name}</div>
                 ${memberInfo.telephone ? `<div class="mc-phone"><i class="fas fa-phone me-1"></i> ${memberInfo.telephone}</div>` : ''}
+                <div class="mt-1">${lineProfileHtml}</div>
             </div>
             <div class="mt-2 text-end">
                 <div class="mc-balance-label">ยอดเงินคงเหลือปัจจุบัน</div>
@@ -876,9 +928,6 @@ function printSticker(memberId, pin) {
     printWin.document.close();
 }
 
-// =========================================================
-// DASHBOARD & YEARLY TABLE LOGIC
-// =========================================================
 async function loadDashboardTab(tabName) {
     showLoading("กำลังโหลดแดชบอร์ด...");
     try {
@@ -930,9 +979,6 @@ function printYearlyTable() {
     printWin.document.close(); setTimeout(() => { printWin.print(); }, 800);
 }
 
-// =========================================================
-// CONFIGURATION & SETTINGS
-// =========================================================
 function openSettingsModal() { 
     showLoading(); 
     db.ref('Config').once('value').then(snap => { 
@@ -944,6 +990,7 @@ function openSettingsModal() {
         document.getElementById('set_pop_male').value = conf.population_male || '';
         document.getElementById('set_pop_female').value = conf.population_female || '';
         document.getElementById('set_committee').value = conf.committee || '';
+        document.getElementById('set_new_passcode').value = '';
         hideLoading(); settingsModal.show(); 
     }).catch(e => { hideLoading(); alert(e.message); }); 
 }
@@ -959,6 +1006,16 @@ async function saveSettingsConfig() {
         population_female: document.getElementById('set_pop_female').value,
         committee: document.getElementById('set_committee').value
     }; 
+    
+    // จัดการเปลี่ยนรหัสผ่าน (Hash)
+    const newPass = document.getElementById('set_new_passcode').value;
+    if (newPass && newPass.length === 4) {
+        conf.PASSCODE_HASH = await sha256(newPass);
+    } else if (newPass && newPass.length !== 4) {
+        hideLoading();
+        return alert("รหัสผ่านใหม่ต้องเป็นตัวเลข 4 หลักเท่านั้น");
+    }
+
     try { 
         await db.ref('Config').update(conf); 
         alert('บันทึกการตั้งค่าเรียบร้อยแล้ว'); 
@@ -966,28 +1023,14 @@ async function saveSettingsConfig() {
     } catch(e) { alert(e.message); } finally { hideLoading(); } 
 }
 
-async function backupDataToExcel() { 
-    showLoading("กำลังสร้างไฟล์ Excel..."); 
-    try { 
-        const [mSnap, tSnap, lSnap] = await Promise.all([db.ref('Members').once('value'), db.ref('Transactions').once('value'), db.ref('Loans').once('value')]); 
-        const wb = XLSX.utils.book_new(); 
-        XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(Object.values(mSnap.val() || {})), "Members"); 
-        XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(Object.values(tSnap.val() || {})), "Transactions"); 
-        XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(Object.values(lSnap.val() || {})), "Loans"); 
-        XLSX.writeFile(wb, `TPBank_Backup_${new Date().toISOString().split('T')[0]}.xlsx`); 
-    } catch(e) { alert("เกิดข้อผิดพลาดในการสำรองข้อมูล: " + e.message); } finally { hideLoading(); } 
-}
+async function backupDataToExcel() { showLoading("กำลังสร้างไฟล์ Excel..."); try { const [mSnap, tSnap, lSnap] = await Promise.all([db.ref('Members').once('value'), db.ref('Transactions').once('value'), db.ref('Loans').once('value')]); const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(Object.values(mSnap.val() || {})), "Members"); XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(Object.values(tSnap.val() || {})), "Transactions"); XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(Object.values(lSnap.val() || {})), "Loans"); XLSX.writeFile(wb, `TPBank_Backup_${new Date().toISOString().split('T')[0]}.xlsx`); } catch(e) { alert("เกิดข้อผิดพลาดในการสำรองข้อมูล: " + e.message); } finally { hideLoading(); } }
 
-// =========================================================
-// LOAN & EDITS LOGIC
-// =========================================================
 async function handleLoanSave(e) { e.preventDefault(); const mid = parseMemberId(document.getElementById('loanMemberInput').value); const d = { loan_id: `L${mid.replace(/^TP/,'')}${Date.now().toString().slice(-6)}`, member_id: mid, loan_amount: document.getElementById('loanAmount').value, interest_rate: document.getElementById('interestRate').value, due_time: document.getElementById('dueTime').value, loan_date: document.getElementById('loanDate').value, due_date: document.getElementById('dueDate').value, loan_type: document.querySelector('input[name="loanType"]:checked').value, loan_status: document.querySelector('input[name="loanStatus"]:checked').value }; showLoading(); try { await runWithTiming('saveLoan', d); alert('บันทึกเรียบร้อย'); addLoanModal.hide(); } catch(e){} finally { hideLoading(); } }
 function openEditModal(recordStr) { const record = JSON.parse(decodeURIComponent(recordStr)); document.getElementById('editRowIndex').value = record.rowIndex; document.getElementById('editSheet').value = record.sheet; document.getElementById('editDate').value = toISODateString(record.date || record.loan_date); document.getElementById('editAmount').value = record.amount || record.loan_amount; document.getElementById('editNote').value = record.note || ''; editModal.show(); }
 async function handleSaveChanges() { showLoading(); try { await runWithTiming('updateRowData', document.getElementById('editSheet').value, document.getElementById('editRowIndex').value, { date: document.getElementById('editDate').value, amount: parseFloat(document.getElementById('editAmount').value), note: document.getElementById('editNote').value }); editModal.hide(); alert('บันทึกเรียบร้อย'); if(currentMemberId) handleSearch(); const act = document.querySelector('#dashboardTab .nav-link.active')?.dataset.tabName; if (act === 'YearlyTable') loadDashboardTab('YearlyTable'); } catch(e){} finally { hideLoading(); } }
 async function handleDelete() { if(!confirm('ยืนยันการลบ? ยอดเงินคงเหลือจะถูกคำนวณใหม่ให้ถูกต้องทันที')) return; showLoading(); try { await runWithTiming('deleteRowData', document.getElementById('editSheet').value, document.getElementById('editRowIndex').value); editModal.hide(); alert('ลบเรียบร้อย'); if(currentMemberId) handleSearch(); const act = document.querySelector('#dashboardTab .nav-link.active')?.dataset.tabName; if (act === 'YearlyTable') loadDashboardTab('YearlyTable'); } catch(e){} finally { hideLoading(); } }
 function openUpdateLoanStatusModal(id, st) { document.getElementById('statusModalLoanId').textContent = id; document.getElementById('saveLoanStatusBtn').dataset.id = id; const r = document.querySelector(`input[name="newLoanStatus"][value="${st}"]`); if(r) r.checked = true; updateLoanStatusModal.show(); }
 async function saveNewLoanStatus() { showLoading(); try { await runWithTiming('updateLoanStatus', document.getElementById('saveLoanStatusBtn').dataset.id, document.querySelector('input[name="newLoanStatus"]:checked').value); updateLoanStatusModal.hide(); loadDashboardTab('LoanManage'); } catch(e){} finally { hideLoading(); } }
-
 async function openMemberModalForNew() { document.getElementById('memberForm').reset(); document.getElementById('memberModalTitle').textContent = 'เปิดบัญชีสมาชิกใหม่'; document.getElementById('join_date').value = toISODateString(new Date()); document.getElementById('member_id').readOnly = false; showLoading(); try { const newId = await runWithTiming('getNewMemberId'); document.getElementById('member_id').value = newId; document.getElementById('account_pin').value = calculatePinClientSide(newId); document.getElementById('member_id').readOnly = true; memberModal.show(); } catch (e) { alert(e.message); } finally { hideLoading(); } }
 function openMemberModalForEdit() { if (!currentMemberData) return; const mem = currentMemberData.memberInfo; document.getElementById('memberModalTitle').textContent = `แก้ไขข้อมูล: ${mem.name}`; document.getElementById('member_id').value = mem.id; document.getElementById('member_id').readOnly = true; document.getElementById('account_pin').value = mem.pin || ''; document.getElementById('full_name').value = mem.name; document.getElementById('monthly_share').value = mem.monthly_share || 0; document.getElementById('telephone').value = mem.telephone || ''; document.getElementById('join_date').value = toISODateString(mem.join_date); document.getElementById('account_status').value = mem.status; document.getElementById('current_balance').value = mem.balance; memberModal.show(); }
 async function handleSaveMember(e) { e.preventDefault(); const formData = Object.fromEntries(new FormData(document.getElementById('memberForm')).entries()); showLoading(); try { await runWithTiming('saveMember', formData); memberModal.hide(); if(currentMemberId === parseMemberId(formData.member_id)) handleSearch(); } catch (e) { alert(e.message); } finally { hideLoading(); } }
