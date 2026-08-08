@@ -9,7 +9,661 @@
 
 <!-- Bootstrap 5, Custom CSS, Chart.js, SheetJS, QRCode.js -->
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-<link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500;700;900&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?// =================================================================
+// ⚙️ GLOBAL CONFIGURATION
+// =================================================================
+const FIREBASE_URL = 'https://thai-pat-bank-default-rtdb.asia-southeast1.firebasedatabase.app/';
+const LINE_CHANNEL_ACCESS_TOKEN = 'oEybdwNFc5+nHmZGw2WVh1wS0V3H6huytfenXNVPKJAGKptsT3VJeyQScM2xq9Nv0PISR8+7kslRwi4xnTgmZ44KT1yuWvmFTa2fcRtv4RxL8sjlj/luAuE0OyczllgLWS2sGn7+BPSecDjnKCAPFAdB04t89/1O/w1cDnyilFU=';
+
+// ---------------------------------------------------
+// 🐛 ระบบบันทึก Log ลง Firebase
+// ---------------------------------------------------
+function writeToFirebaseLog(message) {
+  try {
+    UrlFetchApp.fetch(`${FIREBASE_URL}DebugLogs.json`, {
+      method: 'post',
+      contentType: 'application/json',
+      payload: JSON.stringify({ timestamp: new Date().toLocaleString('th-TH', {timeZone: 'Asia/Bangkok'}), message: message }),
+      muteHttpExceptions: true
+    });
+  } catch (e) {}
+}
+
+function doOptions(e) {
+  return ContentService.createTextOutput("OK").setHeaders({
+    "Access-Control-Allow-Origin": "*",
+    "Access-Control-Allow-Methods": "POST, GET, OPTIONS",
+    "Access-Control-Allow-Headers": "Content-Type"
+  });
+}
+
+function doPost(e) {
+  try {
+    const data = JSON.parse(e.postData.contents);
+    
+    // บันทึกว่ามีอะไรถูกยิงเข้ามาบ้าง
+    writeToFirebaseLog("📥 มี Webhook เข้ามา: " + JSON.stringify(data));
+
+    // ตรวจสอบว่าเป็น Webhook จาก LINE OA หรือไม่
+    if (data.events && data.events.length > 0) {
+      const event = data.events[0];
+      if (event.type === 'message' && event.message.type === 'text') {
+        handleLineChatbot(event);
+      }
+      return ContentService.createTextOutput("OK").setMimeType(ContentService.MimeType.TEXT);
+    }
+
+    // ตรวจสอบว่าเป็น Webhook แจ้งเตือนฝากถอน จาก Vercel หรือไม่
+    // รองรับทั้งแบบส่งมาเป็น userId (คนเดียว) และ userIds (หลายคน)
+    if ((data.userId || data.userIds) && data.type) {
+      return handleVercelPushMessage(data);
+    }
+
+    writeToFirebaseLog("❌ ข้อมูลที่ส่งมาไม่ตรงเงื่อนไข ไม่รู้ว่ามาจากไหน");
+    return ContentService.createTextOutput("Unknown Source").setMimeType(ContentService.MimeType.TEXT);
+  } catch (error) {
+    writeToFirebaseLog("❌ doPost Error: " + error.message);
+    return ContentService.createTextOutput("Error").setMimeType(ContentService.MimeType.TEXT);
+  }
+}
+// =================================================================
+// 🤖 2. LINE CHATBOT ROUTING (ระบบจัดเส้นทางแชท)
+// =================================================================
+function handleLineChatbot(event) {
+  const userId = event.source.userId;
+  const userMessage = event.message.text.trim();
+  const replyToken = event.replyToken;
+
+  if (userMessage === "ธนาคารหมู่บ้าน" || userMessage === "ข้อมูลหมู่บ้าน") {
+    const replyMessages = handleVillageBankInfo();
+    return replyToLine(replyToken, replyMessages);
+  }
+
+  if (userMessage === "เปิดทำการครั้งต่อไป") {
+    const replyMessages = handleNextOpeningDay();
+    return replyToLine(replyToken, replyMessages);
+  }
+
+  // ดึงข้อมูลบัญชีที่ผู้ใช้นี้เคยผูกไว้จาก Firebase
+  const userRegistrations = findRegistrationsByUserId(userId);
+  
+  if (userRegistrations.length > 0) {
+    handleRegisteredUser(event, userRegistrations);
+  } else {
+    handleUnregisteredUser(event);
+  }
+}
+
+// =================================================================
+// =====     ฟังก์ชันจัดการ Flow ตามการลงทะเบียน     =====
+// =================================================================
+function handleRegisteredUser(event, registrations) {
+  const userId = event.source.userId;
+  const userMessage = event.message.text.trim();
+  const replyToken = event.replyToken;
+  let replyMessages = [];
+
+  const userState = getUserState(userId);
+  if (userState === 'awaiting_new_account') {
+    handleAddNewAccountProcess(event, registrations);
+    return;
+  }
+  
+  if (userState === 'awaiting_phone') {
+    replyMessages = processPhoneRegistration(event);
+    replyToLine(replyToken, replyMessages);
+    return;
+  }
+  
+  if (userMessage === "＋ เพิ่มบัญชีอื่น") {
+    setUserState(userId, 'awaiting_new_account');
+    replyMessages = [createTextMessage("กรุณาพิมพ์รหัสบัญชีและ PIN ที่ต้องการเพิ่มในรูปแบบ\nTPxxxx-xx (เช่น TP1234-56)")];
+    replyToLine(replyToken, replyMessages);
+    return;
+  }
+
+  const accountMatch = userMessage.match(/^(TP\d+)-(\d+)$/i);
+  if (accountMatch) {
+      const selectedAccount = accountMatch[0].toUpperCase();
+      const isValidAccount = registrations.some(reg => `${reg.member_id}-${reg.pin}` === selectedAccount);
+      if (isValidAccount) {
+          setCurrentAccount(userId, selectedAccount);
+          replyMessages = handleBalanceInquiry(selectedAccount);
+      } else {
+          replyMessages = [createTextMessage("ไม่พบบัญชีนี้ในรายการของคุณ กรุณาเลือกบัญชีที่ลงทะเบียนไว้ หรือกด '＋ เพิ่มบัญชีอื่น' ครับ")];
+      }
+      return replyToLine(replyToken, replyMessages);
+  }
+  
+  const simpleCommands = ["ฝาก", "ถอน", "กู้", "วางแผน", "ดูข้อมูล", "ดูบัญชี", "เช็คยอด"];
+  if (simpleCommands.some(cmd => userMessage.toUpperCase() === cmd.toUpperCase())) {
+    const currentAccount = getCurrentAccount(userId);
+    if (currentAccount) {
+      const fullCommand = `${userMessage} ${currentAccount}`;
+      replyMessages = routeToKeywordHandler(fullCommand, true);
+    } else {
+      replyMessages = [createAccountSelectionMessage(registrations, "กรุณาเลือกบัญชีก่อนทำรายการครับ")];
+    }
+    return replyToLine(replyToken, replyMessages);
+  }
+
+  if (userMessage.includes("-") && userMessage.includes(" ")) {
+     replyMessages = routeToKeywordHandler(userMessage, false);
+     return replyToLine(replyToken, replyMessages);
+  }
+
+  replyMessages = [createAccountSelectionMessage(registrations, "สวัสดีครับ ต้องการดูข้อมูลบัญชีไหนครับ")];
+  return replyToLine(replyToken, replyMessages);
+}
+
+function handleAddNewAccountProcess(event, existingRegistrations) {
+    const userId = event.source.userId;
+    const userMessage = event.message.text.trim();
+    const replyToken = event.replyToken;
+    let replyMessages = [];
+
+    const accountMatch = userMessage.match(/^(TP\d+)-(\d+)$/i);
+    if (accountMatch) {
+        let memberId = accountMatch[1].toUpperCase();
+        if (/^TP\d+$/.test(memberId) && memberId.length < 6) memberId = 'TP' + memberId.replace('TP', '').padStart(4, '0'); // Auto padding
+        const pin = accountMatch[2];
+        const isAlreadyRegistered = existingRegistrations.some(reg => reg.member_id === memberId);
+        
+        if (isAlreadyRegistered) {
+            replyMessages = [createTextMessage(`บัญชี ${memberId} นี้ได้ถูกเพิ่มใน LINE ของคุณแล้วครับ`)];
+            clearUserState(userId);
+        } else {
+            const member = authenticateUser(memberId, pin);
+            if (member) {
+                replyMessages = startRegistrationProcess(userId, memberId, pin, member);
+            } else {
+                replyMessages = [createTextMessage("ขออภัยครับ รหัสบัญชีหรือ PIN ไม่ถูกต้อง ลองอีกครั้ง หรือติดต่อเจ้าหน้าที่ครับ")];
+                clearUserState(userId);
+            }
+        }
+    } else {
+        replyMessages = [createTextMessage("รูปแบบรหัสบัญชีไม่ถูกต้อง กรุณาพิมพ์ในรูปแบบ TPxxxx-xx ครับ")];
+        clearUserState(userId);
+    }
+    replyToLine(replyToken, replyMessages);
+}
+
+function handleUnregisteredUser(event) {
+  const userId = event.source.userId;
+  const userMessage = event.message.text.trim();
+  const replyToken = event.replyToken;
+  let replyMessages = [];
+
+  const registrationState = getUserState(userId);
+  if (registrationState === 'awaiting_phone') {
+    replyMessages = processPhoneRegistration(event);
+    return replyToLine(replyToken, replyMessages);
+  }
+  
+  const registrationMatch = userMessage.match(/^([a-zA-Z]*\d+)[-\s](\d{2})$/i);
+  if (registrationMatch) {
+    let memberId = registrationMatch[1].toUpperCase();
+    if (/^\d+$/.test(memberId)) memberId = 'TP' + memberId.padStart(4, '0');
+    else if (/^TP\d+$/.test(memberId) && memberId.length < 6) memberId = 'TP' + memberId.replace('TP', '').padStart(4, '0');
+    
+    const pin = registrationMatch[2];
+    const member = authenticateUser(memberId, pin);
+    
+    if (member) {
+       replyMessages = startRegistrationProcess(userId, memberId, pin, member);
+    } else {
+       replyMessages = [createTextMessage("ขออภัยครับ รหัสบัญชีหรือ PIN ไม่ถูกต้อง")];
+    }
+  } else {
+    const initialMessage = "สวัสดีครับ\n" +
+                           "เนื่องจากคุณยังไม่ได้ลงทะเบียนกับ LINE Bot กรุณาทำการลงทะเบียนก่อนเข้าใช้งานครับ\n\n" +
+                           "กรุณาพิมพ์รหัสสมาชิกและรหัสผ่าน (PIN) ของคุณในรูปแบบนี้:\n" +
+                           "TPxxxx-xx หรือ TPxxxx xx";
+    replyMessages = [createTextMessage(initialMessage)];
+  }
+  return replyToLine(replyToken, replyMessages);
+}
+
+// =================================================================
+// =====        STATE MANAGEMENT & REGISTRATION                  =====
+// =================================================================
+function setUserState(userId, state) { cache.put(userId + "_user_state", state, SHORT_CACHE_EXPIRY); }
+function getUserState(userId) { return cache.get(userId + "_user_state"); }
+function clearUserState(userId) { cache.remove(userId + "_user_state"); }
+function setCurrentAccount(userId, accountIdentifier) { cache.put(userId + "_session", accountIdentifier, LONG_CACHE_EXPIRY); }
+function getCurrentAccount(userId) { return cache.get(userId + "_session"); }
+
+function createAccountSelectionMessage(registrations, greetingText) {
+  const quickReplyItems = registrations.map(reg => {
+    return createQuickReplyButton(`บัญชี ${reg.member_id}`, `${reg.member_id}-${reg.pin}`);
+  });
+  quickReplyItems.push(createQuickReplyButton("＋ เพิ่มบัญชีอื่น", "＋ เพิ่มบัญชีอื่น"));
+  return createReplyWithCustomQuickReplies(greetingText, quickReplyItems);
+}
+
+function startRegistrationProcess(userId, memberId, pin, member) {
+    const tempData = { member_id: member.id, pin: member.pin, full_name: member.fullName };
+    cache.put(userId + "_reg_data", JSON.stringify(tempData), SHORT_CACHE_EXPIRY);
+    setUserState(userId, 'awaiting_phone'); 
+    return [createTextMessage(`พบข้อมูลบัญชีของคุณ ${member.fullName}\nกรุณายืนยันตัวตนด้วยเบอร์โทรศัพท์ครับ`)];
+}
+
+function processPhoneRegistration(event) {
+  const userId = event.source.userId;
+  const phone = event.message.text.trim();
+  if (!phone.match(/^0\d{9}$/)) return [createTextMessage("❌ รูปแบบเบอร์โทรศัพท์ไม่ถูกต้อง กรุณากรอกเบอร์โทร 10 หลัก")];
+  
+  const cachedData = cache.get(userId + "_reg_data");
+  if (!cachedData) return [createTextMessage("เกิดข้อผิดพลาด: เซสชั่นหมดอายุ กรุณาเริ่มต้นใหม่")];
+  
+  const registrationData = JSON.parse(cachedData);
+  const profile = getLineProfile(userId);
+
+  // บันทึกลง Firebase แทน
+  const lineProfileData = { userId: userId, displayName: profile.displayName, displayPhoto: profile.pictureUrl, registeredPhone: phone };
+  const url = `${FIREBASE_URL}Members/${registrationData.member_id}/lineProfile.json`;
+  UrlFetchApp.fetch(url, { method: 'put', contentType: 'application/json', payload: JSON.stringify(lineProfileData), muteHttpExceptions: true });
+  
+  // อัปเดตเบอร์โทรในบัญชีหลักถ้ายังไม่มี
+  const memUrl = `${FIREBASE_URL}Members/${registrationData.member_id}.json`;
+  const memRes = UrlFetchApp.fetch(memUrl, {muteHttpExceptions: true});
+  const memData = JSON.parse(memRes.getContentText());
+  if (memData && !memData.telephone) {
+     UrlFetchApp.fetch(`${FIREBASE_URL}Members/${registrationData.member_id}/telephone.json`, { method: 'put', contentType: 'application/json', payload: JSON.stringify(phone), muteHttpExceptions: true });
+  }
+
+  cache.remove("reg_" + userId);
+  cache.remove(userId + "_reg_data");
+  clearUserState(userId); 
+  
+  const updatedRegistrations = findRegistrationsByUserId(userId);
+  const finalMessage = createAccountSelectionMessage(updatedRegistrations, `✅ เพิ่มบัญชี ${registrationData.member_id} เรียบร้อยแล้ว!\n\nคุณสามารถเลือกบัญชีที่ต้องการดูข้อมูลได้เลยครับ:`);
+  return [finalMessage];
+}
+
+// =================================================================
+// =====        KEYWORD ROUTER                                 =====
+// =================================================================
+function routeToKeywordHandler(userMessage, isSimpleCommand = false) {
+    const upperMessage = userMessage.toUpperCase();
+    let keyword = "";
+    if (isSimpleCommand) keyword = upperMessage.split(' ')[0];
+
+    if (keyword === "เช็คยอด" || keyword === "ดูบัญชี" || upperMessage.startsWith("เช็คยอด ") || upperMessage.startsWith("ดูบัญชี ")) {
+       const idStr = upperMessage.replace(keyword, "").trim();
+       return handleBalanceInquiry(idStr);
+    }
+    if (keyword === "ฝาก" || upperMessage.startsWith("ฝาก ")) return handleTransactionHistory(upperMessage, "ฝาก ", "ฝากหุ้น", "รายการฝาก 12 ครั้งล่าสุด");
+    if (keyword === "ถอน" || upperMessage.startsWith("ถอน ")) return handleTransactionHistory(upperMessage, "ถอน ", "ถอนหุ้น", "รายการถอน 5 ครั้งล่าสุด");
+    if (keyword === "กู้" || upperMessage.startsWith("กู้ ")) return handleLoanHistory(upperMessage);
+    if (keyword === "วางแผน" || upperMessage.startsWith("วางแผน ")) return handleFinancialPlanning_Start(upperMessage);
+    
+    if (upperMessage.startsWith("เป้าหมาย_1ปี ")) return handlePlanning_1YearGoal_Start(upperMessage);
+    if (upperMessage.startsWith("เป้าหมาย_1ปี_ตอบ ")) return handlePlanning_1YearGoal_Calculate(upperMessage);
+    if (upperMessage.startsWith("คาดการณ์เงิน_เริ่ม ")) return handlePlanning_FutureProjection_Start(upperMessage);
+    if (upperMessage.startsWith("คาดการณ์เงิน_ตอบ ")) return handlePlanning_FutureProjection_Calculate(upperMessage);
+    if (upperMessage.startsWith("คำนวณดอกเบี้ย_เริ่ม ")) return handlePlanning_LoanInterest_Start(upperMessage);
+    if (upperMessage.startsWith("คำนวณดอกเบี้ย_ตอบ ")) return handlePlanning_LoanInterest_Calculate(upperMessage);
+    if (upperMessage.startsWith("จัดอันดับ ")) return handlePlanning_Ranking(upperMessage);
+    if (upperMessage.startsWith("เงินปันผล ")) return handlePlanning_Dividend(upperMessage);
+    if (upperMessage.startsWith("สิทธิ์ถอนหุ้น ")) return handlePlanning_WithdrawalRights(upperMessage);
+    if (upperMessage.startsWith("นับถอยหลังเงินกู้ ")) return handlePlanning_LoanCountdown(upperMessage);
+    
+    if (upperMessage === "เปิดทำการครั้งต่อไป") return handleNextOpeningDay();
+    
+    return [createTextMessage("ขออภัยครับ ไม่เข้าใจคำสั่ง ลองทักทายเข้ามาใหม่เพื่อเลือกบัญชี หรือเลือกจากเมนูครับ")];
+}
+
+// =================================================================
+// =====        FIREBASE DATA FETCHERS                         =====
+// =================================================================
+function loadConfigData() {
+  const res = UrlFetchApp.fetch(`${FIREBASE_URL}Config.json`, { muteHttpExceptions: true });
+  return JSON.parse(res.getContentText()) || {};
+}
+
+function loadMemberMap() {
+  const res = UrlFetchApp.fetch(`${FIREBASE_URL}Members.json`, { muteHttpExceptions: true });
+  const members = JSON.parse(res.getContentText()) || {};
+  let map = {};
+  for(let k in members) {
+     map[k] = {
+       id: members[k].id, fullName: members[k].name,
+       monthlyShare: Number(members[k].monthly_share) || 0,
+       balance: Number(members[k].balance) || 0,
+       status: members[k].status || 'N/A', pin: String(members[k].pin)
+     };
+  }
+  return map;
+}
+
+function loadTransactionsData() {
+  const res = UrlFetchApp.fetch(`${FIREBASE_URL}Transactions.json`, { muteHttpExceptions: true });
+  return JSON.parse(res.getContentText()) || {};
+}
+
+function loadLoansData() {
+  const res = UrlFetchApp.fetch(`${FIREBASE_URL}Loans.json`, { muteHttpExceptions: true });
+  return JSON.parse(res.getContentText()) || {};
+}
+
+function authenticateUser(idPart, pin) {
+  const res = UrlFetchApp.fetch(`${FIREBASE_URL}Members/${idPart.toUpperCase()}.json`, { muteHttpExceptions: true });
+  const member = JSON.parse(res.getContentText());
+  if (member && String(member.pin) === String(pin)) {
+     return { id: member.id, fullName: member.name, monthlyShare: Number(member.monthly_share), balance: Number(member.balance), status: member.status, pin: String(member.pin) };
+  }
+  return null;
+}
+
+function findRegistrationsByUserId(userId) {
+  // ไม่แคช เพื่อให้เพิ่มบัญชีใหม่แล้วดึงได้ทันที
+  const res = UrlFetchApp.fetch(`${FIREBASE_URL}Members.json`, { muteHttpExceptions: true });
+  const members = JSON.parse(res.getContentText()) || {};
+  let results = [];
+  for (let k in members) {
+    if (members[k].lineProfile && members[k].lineProfile.userId === userId) {
+      results.push({ member_id: members[k].id, pin: String(members[k].pin) });
+    }
+  }
+  return results;
+}
+
+// =================================================================
+// =====        KEYWORD & DATA HANDLERS                        =====
+// =================================================================
+
+function handleBalanceInquiry(message) {
+  const { memberId, pin, error } = extractCredentials(message, "");
+  if (error) return [createTextMessage(error)];
+
+  const member = authenticateUser(memberId, pin);
+  if (!member) return [createTextMessage("รหัสสมาชิกไม่ถูกต้อง ลองพิมพ์อีกครั้งในรูปแบบ TP1234-56")];
+
+  const allTransactionsObj = loadTransactionsData();
+  const allTxList = Object.values(allTransactionsObj).sort((a,b) => new Date(a.date) - new Date(b.date)); // Sort old to new
+  const latestTx = findLatestTransaction(member.id, allTxList);
+  
+  if (latestTx && latestTx.balance_after != null) member.balance = latestTx.balance_after;
+  
+  const hasDeposited = hasDepositedThisMonth(member.id, allTxList);
+  return createFullTextWithQuickReply(member, latestTx, hasDeposited);
+}
+
+function handleTransactionHistory(message, keyword, transactionType, title) {
+  const { memberId, pin, error } = extractCredentials(message, keyword);
+  if (error) return [createTextMessage(error)];
+  const member = authenticateUser(memberId, pin);
+  if (!member) return [createTextMessage("รหัสสมาชิกไม่ถูกต้อง ลองพิมพ์อีกครั้งในรูปแบบ TP1234-56")];
+
+  const allTransactionsObj = loadTransactionsData();
+  const allTxList = Object.values(allTransactionsObj).sort((a,b) => new Date(a.date) - new Date(b.date));
+  const transactions = findTransactions(member.id, transactionType, 12, allTxList);
+  
+  let replyText = `${title}ของคุณ ${member.fullName}:\n\n`;
+  if (transactions.length === 0) replyText = `ไม่พบประวัติการ${keyword.trim()}สำหรับบัญชีนี้ค่ะ`;
+  else transactions.forEach(tx => { replyText += `• ${formatDate(tx.timestamp)}: ${formatCurrency(tx.amount)} บาท\n`; });
+  
+  return [createTextMessageWithQuickReply(replyText.trim(), memberId, pin)];
+}
+
+function handleLoanHistory(message) {
+  const { memberId, pin, error } = extractCredentials(message, "กู้ ");
+  if (error) return [createTextMessage(error)];
+  const member = authenticateUser(memberId, pin);
+  if (!member) return [createTextMessage("รหัสสมาชิกไม่ถูกต้อง ลองพิมพ์อีกครั้งในรูปแบบ TP1234-56")];
+  
+  const allLoansObj = loadLoansData();
+  const allLoanList = Object.values(allLoansObj);
+  const loans = findAllActiveLoans(member.id, allLoanList);
+  
+  let replyText = `ข้อมูลสัญญาเงินกู้ที่ยังใช้งานของคุณ ${member.fullName}:\n`;
+  if (loans.length === 0) replyText = "คุณไม่มีสัญญาเงินกู้ที่ยังใช้งานอยู่ค่ะ";
+  else {
+    loans.forEach((loan, index) => {
+      replyText += `\n--- สัญญาที่ ${index + 1} ---\n• ยอดคงค้าง: ${formatCurrency(loan.outstandingBalance)} บาท\n• สถานะ: ${loan.status}\n• กำหนดจ่าย: ${formatDate(loan.dueDate)}`;
+    });
+  }
+  return [createTextMessageWithQuickReply(replyText.trim(), memberId, pin)];
+}
+
+// (ฟังก์ชันวางแผนต่างๆ เหมือนเดิม แต่เรียกจาก Firebase)
+function handleFinancialPlanning_Start(message) { const { memberId, pin, error } = extractCredentials(message, "วางแผน "); if (error) return [createTextMessage(error)]; return [createFinancialPlanningMenu(memberId, pin)]; }
+function handlePlanning_1YearGoal_Start(message) { const { memberId, pin, error } = extractCredentials(message, "เป้าหมาย_1ปี "); if(error) return [createTextMessage(error)]; return [createReplyWithCustomQuickReplies("ภายใน 1 ปีข้างหน้าคุณอยากมีเงินในบัญชีเท่าไหร่?", [1000, 10000, 50000, 100000, 500000].map(amt => createQuickReplyButton(formatCurrency(amt), `เป้าหมาย_1ปี_ตอบ ${memberId}-${pin} ${amt}`)))]; }
+function handlePlanning_1YearGoal_Calculate(message) { const { memberId, pin, targetAmount, error } = extractPlanningData(message, "เป้าหมาย_1ปี_ตอบ "); if (error) return [createTextMessage(error)]; const member = authenticateUser(memberId, pin); if (!member) return [createTextMessage("ข้อมูลไม่ถูกต้อง")]; let replyText; if (member.balance >= targetAmount) { replyText = `ปัจจุบันคุณมีเงิน ${formatCurrency(member.balance)} บาท ถึงเป้าหมายแล้วค่ะ`; } else { const req = targetAmount - member.balance; replyText = `เป้าหมาย: ${formatCurrency(targetAmount)} บาท\nขาดอีก: ${formatCurrency(req)} บาท\nคุณต้องออมเพิ่มเดือนละ ${formatCurrency(Math.ceil(req/12))} บาท`; } return [createTextMessageWithQuickReply(replyText, memberId, pin)]; }
+function handlePlanning_FutureProjection_Start(message) { const { memberId, pin, error } = extractCredentials(message, "คาดการณ์เงิน_เริ่ม "); if(error) return [createTextMessage(error)]; return [createReplyWithCustomQuickReplies("คาดการณ์เงินเก็บในอีกกี่ปี?", [1, 2, 5, 10, 20].map(y => createQuickReplyButton(`${y} ปี`, `คาดการณ์เงิน_ตอบ ${memberId}-${pin} ${y}`)))]; }
+function handlePlanning_FutureProjection_Calculate(message) { const { memberId, pin, targetAmount: years, error } = extractPlanningData(message, "คาดการณ์เงิน_ตอบ "); if (error) return [createTextMessage(error)]; const member = authenticateUser(memberId, pin); if (!member) return [createTextMessage("ข้อมูลไม่ถูกต้อง")]; const proj = member.balance + (member.monthlyShare * 12 * years); return [createTextMessageWithQuickReply(`ออมเดือนละ ${formatCurrency(member.monthlyShare)} บาทต่อเนื่อง ${years} ปี\nจะมีเงินประมาณ ${formatCurrency(proj)} บาท`, memberId, pin)]; }
+function handlePlanning_LoanInterest_Start(message) { const { memberId, pin, error } = extractCredentials(message, "คำนวณดอกเบี้ย_เริ่ม "); if(error) return [createTextMessage(error)]; return [createReplyWithCustomQuickReplies("คำนวณดอกเบี้ยกู้จากยอดเท่าไหร่?", [5000, 10000, 50000, 100000].map(amt => createQuickReplyButton(formatCurrency(amt), `คำนวณดอกเบี้ย_ตอบ ${memberId}-${pin} ${amt}`)))]; }
+function handlePlanning_LoanInterest_Calculate(message) { const { memberId, pin, targetAmount, error } = extractPlanningData(message.toUpperCase(), "คำนวณดอกเบี้ย_ตอบ "); if (error) return [createTextMessage(error)]; const config = loadConfigData(); const rate = (parseFloat(config.interest_loan) || 12) / 100; const interest = targetAmount * (rate / 2); return [createTextMessageWithQuickReply(`กู้ ${formatCurrency(targetAmount)} บาท:\n💸 ดอกเบี้ยประมาณ: ${formatCurrency(interest)} บาท (ต่อ 6 เดือน)\n(อัตรา ${rate*100}% ต่อปี)`, memberId, pin)]; }
+function handlePlanning_Ranking(message) { const { memberId, pin, error } = extractCredentials(message, "จัดอันดับ "); if (error) return [createTextMessage(error)]; const member = authenticateUser(memberId, pin); const all = loadMemberMap(); const bals = Object.values(all).map(m=>m.balance).sort((a,b)=>b-a); const r = bals.indexOf(member.balance)+1; return [createTextMessageWithQuickReply(`คุณมียอดเงินสูงอันดับ ${r} จาก ${bals.length} คน`, memberId, pin)]; }
+function handlePlanning_Dividend(message) { const { memberId, pin, error } = extractCredentials(message.toUpperCase(), "เงินปันผล "); if (error) return [createTextMessage(error)]; const member = authenticateUser(memberId, pin); const config = loadConfigData(); const rate = (parseFloat(config.dividend) || 5) / 100; const txObj = loadTransactionsData(); let sum = 0; Object.values(txObj).forEach(t => { if(t.memberId === memberId && t.type==='ฝากหุ้น') sum+=Number(t.amount); }); if(sum>0) return [createTextMessageWithQuickReply(`💰 คาดการณ์เงินปันผล: ${formatCurrency(sum*rate)} บาท\n(อัตรา ${rate*100}%)`, memberId, pin)]; else return [createTextMessageWithQuickReply(`ยังไม่มียอดฝากสะสมค่ะ`, memberId, pin)]; }
+function handlePlanning_WithdrawalRights(message) { const { memberId, pin, error } = extractCredentials(message, "สิทธิ์ถอนหุ้น "); if (error) return [createTextMessage(error)]; const txs = Object.values(loadTransactionsData()); let count = 0; const y = new Date().getFullYear(); txs.forEach(t=>{ if(t.memberId===memberId && t.type==='ถอนหุ้น' && new Date(t.date).getFullYear()===y) count++;}); const rem = 4-count; return [createTextMessageWithQuickReply(`ปีนี้ใช้สิทธิ์ถอน ${count} ครั้ง\nเหลืออีก ${rem>0?rem:0} ครั้ง`, memberId, pin)]; }
+function handlePlanning_LoanCountdown(message) { const { memberId, pin, error } = extractCredentials(message, "นับถอยหลังเงินกู้ "); if (error) return [createTextMessage(error)]; const loans = Object.values(loadLoansData()); const active = loans.filter(l=>l.member_id===memberId && l.loan_status!=='จ่ายครบ' && l.due_date).sort((a,b)=>new Date(a.due_date)-new Date(b.due_date)); if(active.length===0) return [createTextMessageWithQuickReply("ไม่มีสัญญาใช้งานอยู่", memberId, pin)]; const days = Math.ceil((new Date(active[0].due_date) - new Date())/86400000); return [createTextMessageWithQuickReply(days<0 ? "มีสัญญาเลยกำหนด!" : `เหลืออีก ${days} วัน ถึงกำหนดชำระ`, memberId, pin)]; }
+
+function handleNextOpeningDay() {
+    const today = new Date(); const currentDayOfMonth = today.getDate();
+    let nextOpeningDate = currentDayOfMonth >= 8 ? new Date(today.getFullYear(), today.getMonth() + 1, 8) : new Date(today.getFullYear(), today.getMonth(), 8);
+    const replyText = `โดยทั่วไป ธ.หมู่บ้านจะเปิดทำการทุกวันที่ 8 ของเดือน ยกเว้นจะมีประกาศจากคณะกรรมการฯ ครั้งต่อไปคือวัน${nextOpeningDate.toLocaleString('th-TH', { weekday: 'long' })} ที่ ${nextOpeningDate.getDate()} เดือน ${nextOpeningDate.toLocaleString('th-TH', { month: 'long' })} พ.ศ. ${nextOpeningDate.getFullYear() + 543} ครับ`;
+    return [createTextMessage(replyText)];
+}
+
+function handleVillageBankInfo() {
+  const config = loadConfigData();
+  const popAll = config.population_all || 'N/A';
+  const popMale = config.population_male || 'N/A';
+  const popFemale = config.population_female || 'N/A';
+  const committeeList = config.committee || 'ไม่พบข้อมูลคณะกรรมการ';
+  const villageInfoText = `หมู่บ้านไทยพัฒนา หมู่ที่ 7 ต.นาสัก อ.สวี จ.ชุมพร\nจำนวนครัวเรือน 230 ครัวเรือน\nประชากร รวม ${popAll} คน\nชาย ${popMale} คน\nหญิง ${popFemale} คน \n(ข้อมูล อัปเดตล่าสุด)`;
+  const flexMessage = { "type": "flex","altText": "ข้อมูลธนาคารหมู่บ้าน","contents": { "type": "carousel", "contents": [ {"type": "bubble","hero": {"type": "image","url": "https://img2.pic.in.th/pic/DSC00667.png","size": "full","aspectRatio": "16:9","aspectMode": "cover"},"header": {"type": "box","layout": "vertical","backgroundColor": "#336699","paddingAll": "10px","contents": [{"type": "text","text": "ข้อมูลธนาคารหมู่บ้าน","color": "#FFFFFF","align": "center","weight": "bold","size": "lg","wrap": true}]},"body": {"type": "box","layout": "vertical","paddingAll": "20px","spacing": "sm","contents": [{"type": "text","text": "ธนาคารหมู่บ้านไทยพัฒนา อ.สวี จ.ชุมพร: ศูนย์กลางการพัฒนาเศรษฐกิจฐานรากเพื่อชุมชนที่ยั่งยืน\n\nภารกิจหลักของเรา:\n\n💰แหล่งทุนหมุนเวียนเพื่อชีวิตที่ดีขึ้น\n\n📈ส่งเสริมและพัฒนาศักยภาพชุมชน\n\n🌱สร้างความเข้มแข็งทางเศรษฐกิจฐานราก","wrap": true,"margin": "none"},{"type": "separator","margin": "lg"},{"type": "button","style": "primary","color": "#4CAF50","height": "sm","margin": "lg","action": {"type": "message","label": "เปิดทำการครั้งต่อไป","text": "เปิดทำการครั้งต่อไป"}},{"type": "button","style": "primary","color": "#FFC107","height": "sm","margin": "md","action": {"type": "uri","label": "เส้นทางไปศูนย์หมู่บ้านฯ","uri": "https://maps.app.goo.gl/354Q4bwr2wDAbLpC9"}}]}}, {"type": "bubble","hero": {"type": "image","url": "https://img5.pic.in.th/file/secure-sv1/LINE_ALBUM_--6168_250619_1.md.jpg","size": "full","aspectRatio": "16:9","aspectMode": "cover"},"header": {"type": "box","layout": "vertical","backgroundColor": "#339966","paddingAll": "10px","contents": [{"type": "text","text": "รายชื่อคณะกรรมการ ธ.หมู่บ้าน","color": "#FFFFFF","align": "center","weight": "bold","size": "lg","wrap": true}]},"body": {"type": "box","layout": "vertical","paddingAll": "20px","spacing": "sm","contents": [{"type": "text","text": committeeList,"wrap": true,"margin": "none"}]}}, {"type": "bubble","hero": {"type": "image","url": "https://img2.pic.in.th/pic/20240328_180812.jpg","size": "full","aspectRatio": "16:9","aspectMode": "cover"},"header": {"type": "box","layout": "vertical","backgroundColor": "#993366","paddingAll": "10px","contents": [{"type": "text","text": "ข้อมูลพื้นฐานหมู่บ้าน","color": "#FFFFFF","align": "center","weight": "bold","size": "lg","wrap": true}]},"body": {"type": "box","layout": "vertical","contents": [{"type": "text","text": villageInfoText,"wrap": true}]}}, {"type": "bubble","hero": {"type": "image","url": "https://img5.pic.in.th/file/secure-sv1/Screen-Shot-2568-06-19-at-00.50.15.md.png","size": "full","aspectRatio": "16:9","aspectMode": "cover"},"header": {"type": "box","layout": "vertical","backgroundColor": "#FFA500","paddingAll": "10px","contents": [{"type": "text","text": "สถานที่สำคัญในชุมชน","color": "#FFFFFF","align": "center","weight": "bold","size": "lg","wrap": true}]},"body": {"type": "box","layout": "vertical","contents": [{"type": "text","text": "การศึกษา \n🏫ศูนย์พัฒนาเด็กเล็กบ้านไทยพัฒนา \n🏫โรงเรียนบ้านไทยพัฒนา \nสาธารณสุข \n🏥โรงพยาบาลส่งเสริมสุขภาพตำบลบ้านไทยพัฒนา \nสถาบันและองค์กรทางศาสนา \n🕍ที่พักสงฆ์สันติคีรีวนาราม \n🕍สำนักสงฆ์ไทยพัฒนาสาวเอ้สามัคคีธรรม","wrap": true}]}} ]}};
+  return [flexMessage];
+}
+
+// ===== CORE LOGIC (Find, Create Messages) =====
+function findTransactions(memberId, transactionType, limit, allTxList) {
+  const results = [];
+  // allTxList ถูก Sort เก่าไปใหม่ ดังนั้นลูปจากท้าย
+  for (let i = allTxList.length - 1; i >= 0 && results.length < limit; i--) {
+    const tx = allTxList[i];
+    if (tx.memberId === memberId && tx.type === transactionType) results.push({ timestamp: tx.date, amount: Number(tx.amount) });
+  }
+  return results;
+}
+
+function findLatestTransaction(memberId, allTxList) {
+  for (let i = allTxList.length - 1; i >= 0; i--) {
+    const tx = allTxList[i];
+    if (tx.memberId === memberId) return { timestamp: tx.date, type: tx.type, amount: Number(tx.amount), balance_after: Number(tx.balance_after) };
+  }
+  return { type: 'ไม่มีประวัติ', amount: 0, timestamp: null, balance_after: null };
+}
+
+function findAllActiveLoans(memberId, allLoansList) {
+  return allLoansList.filter(l => l.member_id === memberId).map(l => ({ outstandingBalance: Number(l.outstanding_balance)||0, dueDate: l.due_date, status: l.loan_status||'N/A' }));
+}
+
+function hasDepositedThisMonth(memberId, allTxList) {
+  const now = new Date();
+  for (let i = allTxList.length - 1; i >= 0; i--) {
+    const tx = allTxList[i];
+    if (tx.memberId === memberId && (tx.type === 'ฝากหุ้น' || tx.type === 'ยอดยกมา')) {
+      const d = new Date(tx.date);
+      if (d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth()) return true;
+    }
+  }
+  return false;
+}
+
+// ===== LINE MESSAGE BUILDERS =====
+function createFullTextWithQuickReply(member, latestTx, hasDeposited) {
+  const keyword = `${member.id}-${member.pin}`;
+  const flexMessage = createAccountInfoFlex(member, latestTx, hasDeposited);
+  flexMessage.quickReply = { "items": [ createQuickReplyButton("ฝาก", "ฝาก " + keyword), createQuickReplyButton("ถอน", "ถอน " + keyword), createQuickReplyButton("กู้", "กู้ " + keyword), createQuickReplyButton("วางแผน", "วางแผน " + keyword) ] };
+  return [flexMessage];
+}
+
+function createAccountInfoFlex(member, latestTx, hasDeposited) {
+  const depositStatus = hasDeposited ? { text: '✅ เดือนนี้ฝากเรียบร้อยแล้ว', color: '#1EC25A' } : { text: '❌ เดือนนี้ยังไม่ได้ฝาก', color: '#FF4A4A' };
+  return { type: 'flex', altText: `ยอดเงินของ ${member.fullName} คือ ${formatCurrency(member.balance)} บาท`, contents: { type: 'bubble', header: { type: 'box', layout: 'vertical', paddingAll: 'lg', background: { type: 'linearGradient', angle: '135deg', startColor: '#0D47A1', endColor: '#B71C1C' }, contents: [ { type: 'image', url: 'https://img5.pic.in.th/file/secure-sv1/tp-logo-morning.th.png', align: 'center', size: 'sm', aspectMode: 'fit' }, { type: 'text', text: 'ออมทรัพย์หมู่บ้านไทยพัฒนา', align: 'center', weight: 'bold', color: '#FFFFFF', size: 'md', margin: 'md' } ] }, body: { type: 'box', layout: 'vertical', contents: [ { type: 'text', text: 'ข้อมูลบัญชี', weight: 'bold', size: 'lg', margin: 'md' }, { type: 'separator', margin: 'md' }, { type: 'text', text: `ชื่อบัญชี: ${member.fullName}`, size: 'sm', wrap: true }, { type: 'text', text: `เลขที่บัญชี: ${member.id}`, size: 'sm', margin: 'md' }, { type: 'text', text: `สถานะ: ${member.status}`, size: 'sm', margin: 'md' }, { type: 'separator', margin: 'lg' }, { type: 'text', text: 'ยอดเงินในบัญชี', size: 'md' }, { type: 'text', text: `${formatCurrency(member.balance)} บาท`, weight: 'bold', size: 'xxl', margin: 'sm' }, { type: 'separator', margin: 'lg' }, { type: 'text', text: 'ธุรกรรมล่าสุด', weight: 'bold', size: 'md' }, { type: 'text', text: `ประเภท: ${latestTx.type}`, size: 'sm', margin: 'md' }, { type: 'text', text: `จำนวนเงิน: ${formatCurrency(latestTx.amount)} บาท`, size: 'sm', margin: 'md' }, { type: 'text', text: `เวลา: ${formatTimestamp(latestTx.timestamp)}`, size: 'sm', margin: 'md', wrap: true }, { type: 'separator', margin: 'lg' }, { type: 'text', text: depositStatus.text, color: depositStatus.color, weight: 'bold', size: 'sm', align: 'center' } ] }, footer: { type: 'box', layout: 'vertical', spacing: 'sm', contents: [ { type: 'button', style: 'primary', height: 'sm', color: '#0D47A1', action: { type: 'message', label: 'รีเฟรช / กลับเมนูหลัก', text: `${member.id}-${member.pin}` } } ] } } };
+}
+
+function createTextMessage(text) { return { "type": "text", "text": text }; }
+function createTextMessageWithQuickReply(mainText, memberId, pin) { const keyword = `${memberId}-${pin}`; return { "type": "text", "text": mainText, "quickReply": { "items": [ createQuickReplyButton(`กลับเมนูหลัก`, keyword), createQuickReplyButton("ฝาก", "ฝาก " + keyword), createQuickReplyButton("ถอน", "ถอน " + keyword), createQuickReplyButton("เปิดทำการครั้งต่อไป", "เปิดทำการครั้งต่อไป") ] } }; }
+function createFinancialPlanningMenu(memberId, pin) { const keyword = `${memberId}-${pin}`; const question = "เลือกเมนูวางแผนการเงินที่คุณต้องการ"; const quickReplyItems = [ createQuickReplyButton("เป้าหมายเงินออม 1 ปี", "เป้าหมาย_1ปี " + keyword), createQuickReplyButton("คาดการณ์เงินอนาคต", "คาดการณ์เงิน_เริ่ม " + keyword), createQuickReplyButton("คำนวณดอกเบี้ยกู้", "คำนวณดอกเบี้ย_เริ่ม " + keyword), createQuickReplyButton("อันดับเงินออม", "จัดอันดับ " + keyword), createQuickReplyButton("เช็คสิทธิ์ถอน", "สิทธิ์ถอนหุ้น " + keyword), createQuickReplyButton("นับถอยหลังหนี้", "นับถอยหลังเงินกู้ " + keyword), createQuickReplyButton("เช็คปันผล", "เงินปันผล " + keyword), createQuickReplyButton(`กลับเมนูหลัก`, keyword) ]; return createReplyWithCustomQuickReplies(question, quickReplyItems); }
+function createReplyWithCustomQuickReplies(mainText, items) { return { "type": "text", "text": mainText, "quickReply": { "items": items } }; }
+
+function extractCredentials(message, keyword) { const credentials = keyword ? message.replace(keyword, "").trim() : message; const parts = credentials.split('-'); if (parts.length !== 2) return { error: "รูปแบบไม่ถูกต้อง กรุณาเลือกจากเมนู" }; return { memberId: parts[0].trim().toUpperCase(), pin: parts[1].trim(), error: null }; }
+function extractPlanningData(message, keyword) { const dataString = message.replace(keyword, "").trim(); const parts = dataString.split(' '); if (parts.length !== 2) return { error: "รูปแบบข้อมูลเป้าหมายไม่ถูกต้อง" }; const credentials = parts[0]; const targetAmount = parseFloat(parts[1]); const credParts = credentials.split('-'); if (credParts.length !== 2 || isNaN(targetAmount)) return { error: "รูปแบบข้อมูลเป้าหมายไม่ถูกต้อง" }; return { memberId: credParts[0].trim().toUpperCase(), pin: credParts[1].trim(), targetAmount: targetAmount, error: null }; }
+function createQuickReplyButton(label, text) { return { "type": "action", "action": { "type": "message", "label": label, "text": text } }; }
+function formatCurrency(num) { return (num || 0).toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
+function formatDate(d) { if(!d) return 'N/A'; const date = new Date(d); let year = date.getFullYear(); if (year > 2500) year -= 543; return Utilities.formatDate(new Date(year, date.getMonth(), date.getDate()), "Asia/Bangkok", "dd/MM/") + (year + 543); }
+function formatTimestamp(d) { if(!d) return 'N/A'; const date = new Date(d); let year = date.getFullYear(); if (year > 2500) year -= 543; const correctDate = new Date(year, date.getMonth(), date.getDate(), date.getHours(), date.getMinutes(), date.getSeconds()); return Utilities.formatDate(correctDate, "Asia/Bangkok", "dd/MM/") + (year + 543) + " เวลา " + Utilities.formatDate(correctDate, "Asia/Bangkok", "HH:mm น."); }
+
+// =================================================================
+// 📢 VERCEL PUSH NOTIFICATION (ระบบยิงแจ้งเตือน Flex Message)
+// =================================================================
+function handleVercelPushMessage(data) {
+  try {
+    writeToFirebaseLog("กำลังเตรียมส่ง Flex Message แจ้งเตือน: " + JSON.stringify(data));
+    
+    // 1. ดึงชื่อสมาชิกจาก Firebase มาใช้ในสลิป (เพราะ Vercel อาจจะส่งมาแค่ ID)
+    let memberName = "ลูกค้าธนาคาร";
+    try {
+      const res = UrlFetchApp.fetch(`${FIREBASE_URL}Members/${data.memberId}/name.json`, { muteHttpExceptions: true });
+      if (res.getResponseCode() === 200) {
+        const nameVal = JSON.parse(res.getContentText());
+        if (nameVal) memberName = nameVal;
+      }
+    } catch (e) {
+      writeToFirebaseLog("⚠️ ไม่สามารถดึงชื่อสมาชิกได้ ใช้ชื่อเริ่มต้นแทน");
+    }
+
+    // 2. จัดรูปแบบตัวเลขและวันที่
+    const formattedAmount = Number(data.amount).toLocaleString('th-TH', { minimumFractionDigits: 2 });
+    const formattedBalance = Number(data.newBalance).toLocaleString('th-TH', { minimumFractionDigits: 2 });
+    const isDeposit = data.type === 'deposit';
+    
+    // สีของ Header และสีของจำนวนเงิน
+    const headerColor = isDeposit ? "#198754" : "#DC3545"; // เขียว (ฝาก) หรือ แดง (ถอน)
+    const amountColor = isDeposit ? "#198754" : "#DC3545";
+    const actionText = isDeposit ? "รายการฝากเงินเข้าบัญชี" : "รายการถอนเงินจากบัญชี";
+    const sign = isDeposit ? "+" : "-";
+    
+    // วันเวลาปัจจุบันที่ทำรายการ
+    const now = new Date();
+    let year = now.getFullYear();
+    if (year > 2500) year -= 543;
+    const txDateStr = Utilities.formatDate(new Date(year, now.getMonth(), now.getDate(), now.getHours(), now.getMinutes()), "Asia/Bangkok", "dd/MM/") + (year + 543) + " เวลา " + Utilities.formatDate(new Date(year, now.getMonth(), now.getDate(), now.getHours(), now.getMinutes()), "Asia/Bangkok", "HH:mm น.");
+
+    // 3. สร้างโครงสร้าง Flex Message
+    const flexMessage = {
+      type: "flex",
+      altText: `แจ้งเตือน${actionText} ${formattedAmount} บาท`,
+      contents: {
+        type: "bubble",
+        header: {
+          type: "box", layout: "vertical", paddingAll: "lg", backgroundColor: headerColor,
+          contents: [
+            { type: "text", text: "แจ้งเตือนทำรายการ", color: "#ffffff", weight: "bold", size: "sm" },
+            { type: "text", text: isDeposit ? "ฝากเงินสำเร็จ" : "ถอนเงินสำเร็จ", color: "#ffffff", weight: "bold", size: "xl", margin: "sm" }
+          ]
+        },
+        body: {
+          type: "box", layout: "vertical", spacing: "sm",
+          contents: [
+            // บรรทัดชื่อ
+            { type: "box", layout: "horizontal",
+              contents: [
+                { type: "text", text: "ชื่อบัญชี", size: "sm", color: "#aaaaaa", flex: 2 },
+                { type: "text", text: memberName, size: "sm", color: "#333333", weight: "bold", flex: 5, align: "end", wrap: true }
+              ]
+            },
+            // บรรทัดเลขบัญชี
+            { type: "box", layout: "horizontal", margin: "md",
+              contents: [
+                { type: "text", text: "รหัสบัญชี", size: "sm", color: "#aaaaaa", flex: 2 },
+                { type: "text", text: data.memberId, size: "sm", color: "#333333", weight: "bold", flex: 5, align: "end" }
+              ]
+            },
+            { type: "separator", margin: "lg" },
+            // บรรทัดวันเวลา
+            { type: "box", layout: "horizontal", margin: "lg",
+              contents: [
+                { type: "text", text: "วัน-เวลา", size: "xs", color: "#aaaaaa", flex: 2 },
+                { type: "text", text: txDateStr, size: "xs", color: "#666666", flex: 5, align: "end" }
+              ]
+            },
+            // บรรทัดจำนวนเงิน
+            { type: "box", layout: "horizontal", margin: "md",
+              contents: [
+                { type: "text", text: "จำนวนเงิน", size: "sm", color: "#aaaaaa", flex: 2 },
+                { type: "text", text: `${sign}${formattedAmount} ฿`, size: "lg", color: amountColor, weight: "bold", flex: 5, align: "end" }
+              ]
+            },
+            { type: "separator", margin: "lg" },
+            // บรรทัดยอดคงเหลือ
+            { type: "box", layout: "vertical", margin: "lg",
+              contents: [
+                { type: "text", text: "ยอดเงินคงเหลือ", size: "sm", color: "#aaaaaa" },
+                { type: "text", text: `฿ ${formattedBalance}`, size: "3xl", weight: "bold", color: "#1e3a8a", margin: "sm" }
+              ]
+            }
+          ]
+        }
+      }
+    };
+
+    // 4. ค้นหาเป้าหมาย (รองรับแบบ Array)
+    let targetUsers = [];
+    if (data.userIds && Array.isArray(data.userIds)) targetUsers = data.userIds;
+    else if (data.userId) targetUsers = [data.userId];
+
+    if (targetUsers.length === 0) {
+      writeToFirebaseLog("⚠️ ไม่มี LINE ID (อาจยังไม่ผูกบัญชี)");
+      return ContentService.createTextOutput(JSON.stringify({status: 'skipped'}))
+        .setMimeType(ContentService.MimeType.JSON)
+        .setHeaders({"Access-Control-Allow-Origin": "*"});
+    }
+
+    // 5. ส่ง Flex Message หาทุกคน
+    targetUsers.forEach(uid => {
+      try {
+        UrlFetchApp.fetch('https://api.line.me/v2/bot/message/push', {
+          method: 'post',
+          contentType: 'application/json',
+          headers: { 'Authorization': 'Bearer ' + LINE_CHANNEL_ACCESS_TOKEN },
+          payload: JSON.stringify({
+            to: uid,
+            messages: [flexMessage] // เปลี่ยนจากข้อความธรรมดา เป็นออบเจ็กต์ Flex Message
+          }),
+          muteHttpExceptions: true
+        });
+        writeToFirebaseLog(`✅ ยิง Flex Message หาลูกค้า ${uid} สำเร็จ!`);
+      } catch (e) {
+        writeToFirebaseLog(`❌ ยิงหา ${uid} ไม่สำเร็จ: ` + e.message);
+      }
+    });
+    
+    return ContentService.createTextOutput(JSON.stringify({status: 'success'}))
+      .setMimeType(ContentService.MimeType.JSON)
+      .setHeaders({"Access-Control-Allow-Origin": "*"});
+
+  } catch (error) {
+    writeToFirebaseLog("❌ handleVercelPushMessage Error: " + error.message);
+    return ContentService.createTextOutput("Error").setMimeType(ContentService.MimeType.TEXT);
+  }
+}
+
+function replyToLine(replyToken, messages) {
+  UrlFetchApp.fetch('https://api.line.me/v2/bot/message/reply', { method: 'post', contentType: 'application/json', headers: { 'Authorization': 'Bearer ' + LINE_CHANNEL_ACCESS_TOKEN }, payload: JSON.stringify({ replyToken: replyToken, messages: messages }), muteHttpExceptions: true });
+}
+
+function getLineProfile(userId) {
+  try { const response = UrlFetchApp.fetch('https://api.line.me/v2/bot/profile/' + userId, { headers: { 'Authorization': 'Bearer ' + LINE_CHANNEL_ACCESS_TOKEN }, muteHttpExceptions: true }); const profile = JSON.parse(response.getContentText()); return { displayName: profile.displayName || 'ผู้ใช้งาน', pictureUrl: profile.pictureUrl || '' }; } catch (e) { return { displayName: 'ผู้ใช้งาน', pictureUrl: '' }; }
+}
+
+function writeToFirebaseLog(message) {
+  try { UrlFetchApp.fetch(`${FIREBASE_URL}Logs.json`, { method: 'post', contentType: 'application/json', payload: JSON.stringify({ timestamp: new Date().toISOString(), message: message }), muteHttpExceptions: true }); } catch (e) {}
+}family=Sarabun:wght@400;500;700;900&display=swap" rel="stylesheet">
 <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
@@ -219,7 +873,7 @@
 <!-- 🧩 MODALS (หน้าต่างป๊อปอัพ) -->
 <!-- ============================================== -->
 
-<!-- 1. Modal ทำรายการฝาก/ถอน -->
+<!-- Modal สำหรับทำรายการฝาก/ถอน -->
 <div class="modal fade" id="modalTx" tabindex="-1">
   <div class="modal-dialog modal-dialog-centered">
     <div class="modal-content p-3" id="modalTxContent">
@@ -402,7 +1056,7 @@ const firebaseConfig = {
 // =========================================================
 // 2. Web App URL ของ GAS (สำหรับ Push Notification)
 // =========================================================
-const GAS_WEBHOOK_URL = "https://script.google.com/macros/s/AKfycbzQ5nDptAzbZjoCDz3a1OqOX9M06KBZ07ggNPqrfNN1puWIK4YreMkhZRMi1IXk-TsNvw/exec";
+const GAS_WEBHOOK_URL = "https://script.google.com/macros/s/AKfycbwuEj8gc_1bSGOpjUtgvNtWvy8O0nU-sVwX0H4KTf-8KZMTvE8mAW5-sOIrMhP3Dt4xDQ/exec";
 
 if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
