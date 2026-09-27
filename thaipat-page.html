@@ -1,0 +1,932 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>บ้านไทยพัฒนา ม.7 ต.นาสัก อ.สวี จ.ชุมพร | เที่ยววิถีชุมชน</title>
+<meta name="description" content="ท่องเที่ยวชุมชนบ้านไทยพัฒนา หมู่ 7 ตำบลนาสัก อำเภอสวี จังหวัดชุมพร สวนทุเรียน กาแฟโรบัสต้า น้ำตก วิถีเกษตรใต้">
+<link href="https://fonts.googleapis.com/css2?family=Bai+Jamjuree:wght@400;600;700&family=Noto+Sans+Thai:wght@300;400;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --green:#1B4332; --green2:#2D6A4F; --gold:#D4A24C; --clay:#E85D3D;
+  --bg:#FAF6EF; --ink:#22303C; --muted:#6B7A85; --white:#fff;
+  --ease:cubic-bezier(.22,1,.36,1); --r:20px;
+  --shadow:0 18px 50px -20px rgba(27,67,50,.35);
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{font-family:'Noto Sans Thai',sans-serif;background:var(--bg);color:var(--ink);overflow-x:hidden;line-height:1.75}
+h1,h2,h3,h4,.f{font-family:'Bai Jamjuree',sans-serif;line-height:1.25}
+img{max-width:100%;display:block}
+a{color:inherit;text-decoration:none}
+.wrap{width:min(1180px,92vw);margin:0 auto}
+
+/* ---------- PRELOADER ---------- */
+#preload{position:fixed;inset:0;background:var(--green);z-index:9999;display:grid;place-items:center;
+  transition:opacity .7s var(--ease),visibility .7s}
+#preload.done{opacity:0;visibility:hidden}
+.leaf{width:70px;height:70px;border-radius:50% 0 50% 50%;background:linear-gradient(135deg,var(--gold),#8FD694);
+  animation:spinleaf 1.4s var(--ease) infinite}
+@keyframes spinleaf{0%{transform:rotate(0) scale(.8)}50%{transform:rotate(180deg) scale(1.1)}100%{transform:rotate(360deg) scale(.8)}}
+#preload p{color:#CFE8D5;margin-top:22px;letter-spacing:4px;font-size:13px;text-align:center}
+
+/* ---------- PROGRESS + CURSOR ---------- */
+#bar{position:fixed;top:0;left:0;height:3px;width:0;z-index:999;
+  background:linear-gradient(90deg,var(--gold),var(--clay))}
+#cursor{position:fixed;width:26px;height:26px;border:1.5px solid var(--gold);border-radius:50%;
+  pointer-events:none;z-index:998;transition:transform .18s var(--ease),opacity .3s;mix-blend-mode:difference}
+#cursor.big{transform:scale(2.4);background:rgba(212,162,76,.18)}
+@media(max-width:900px){#cursor{display:none}}
+
+/* ---------- NAV ---------- */
+header{position:fixed;top:0;left:0;right:0;z-index:900;padding:18px 0;transition:.45s var(--ease)}
+header.solid{background:rgba(250,246,239,.92);backdrop-filter:blur(14px);padding:10px 0;
+  box-shadow:0 8px 30px -18px rgba(0,0,0,.4)}
+.nav{display:flex;align-items:center;justify-content:space-between;gap:20px}
+.logo{display:flex;align-items:center;gap:11px;cursor:pointer}
+.logo span:first-child{width:42px;height:42px;border-radius:50% 0 50% 50%;
+  background:linear-gradient(135deg,var(--green2),var(--gold));display:grid;place-items:center;
+  color:#fff;font-weight:700;font-family:'Bai Jamjuree';transition:.5s var(--ease)}
+.logo:hover span:first-child{transform:rotate(-140deg)}
+.logo b{font-family:'Bai Jamjuree';font-size:18px;display:block;line-height:1.1}
+.logo small{font-size:10.5px;color:var(--muted);letter-spacing:1.4px}
+nav ul{display:flex;gap:4px;list-style:none;align-items:center}
+nav a{padding:9px 13px;border-radius:30px;font-size:14.5px;position:relative;transition:.35s var(--ease);white-space:nowrap}
+nav a:hover{background:rgba(45,106,79,.1);color:var(--green)}
+nav a.on{background:var(--green);color:#fff}
+.burger{display:none;flex-direction:column;gap:5px;cursor:pointer;padding:8px}
+.burger i{width:24px;height:2px;background:var(--ink);transition:.4s var(--ease);display:block}
+.burger.x i:nth-child(1){transform:translateY(7px) rotate(45deg)}
+.burger.x i:nth-child(2){opacity:0}
+.burger.x i:nth-child(3){transform:translateY(-7px) rotate(-45deg)}
+@media(max-width:1080px){
+  .burger{display:flex}
+  nav ul{position:fixed;inset:0 0 0 30%;background:var(--green);flex-direction:column;justify-content:center;
+    gap:8px;transform:translateX(100%);transition:.55s var(--ease)}
+  nav ul.open{transform:none}
+  nav a{color:#fff;font-size:17px;padding:12px 26px}
+}
+
+/* ---------- PAGE SYSTEM ---------- */
+.page{display:none;padding-top:104px;animation:fade .7s var(--ease)}
+.page.live{display:block}
+@keyframes fade{from{opacity:0;transform:translateY(26px)}to{opacity:1;transform:none}}
+#swipe{position:fixed;inset:0;background:var(--green);z-index:950;transform:scaleY(0);
+  transform-origin:bottom;pointer-events:none}
+#swipe.go{animation:swipe .85s var(--ease)}
+@keyframes swipe{0%{transform:scaleY(0);transform-origin:bottom}
+  45%{transform:scaleY(1);transform-origin:bottom}
+  55%{transform:scaleY(1);transform-origin:top}
+  100%{transform:scaleY(0);transform-origin:top}}
+
+/* ---------- HERO ---------- */
+.hero{position:relative;min-height:calc(100vh - 104px);display:grid;place-items:center;
+  overflow:hidden;border-radius:var(--r);margin-bottom:70px}
+.hero-bg{position:absolute;inset:-8%;background:url('https://picsum.photos/seed/chumphonhills/1800/1100') center/cover;
+  transform:scale(1.12);will-change:transform}
+.hero::after{content:'';position:absolute;inset:0;
+  background:linear-gradient(180deg,rgba(27,67,50,.72),rgba(27,67,50,.35) 45%,rgba(27,67,50,.88))}
+.hero-in{position:relative;z-index:2;text-align:center;color:#fff;padding:70px 20px}
+.badge{display:inline-block;padding:7px 20px;border:1px solid rgba(255,255,255,.45);border-radius:30px;
+  font-size:12.5px;letter-spacing:2.5px;margin-bottom:26px;backdrop-filter:blur(6px)}
+.hero h1{font-size:clamp(38px,7vw,82px);font-weight:700;letter-spacing:-1px}
+.hero h1 em{font-style:normal;color:var(--gold)}
+.hero p{max-width:640px;margin:20px auto 34px;font-size:clamp(15px,2vw,18px);opacity:.93;font-weight:300}
+.reveal-w{overflow:hidden;display:block}
+.reveal-w>*{display:block;transform:translateY(110%);animation:up 1s var(--ease) forwards}
+@keyframes up{to{transform:none}}
+.btns{display:flex;gap:14px;justify-content:center;flex-wrap:wrap}
+.btn{padding:14px 32px;border-radius:40px;font-weight:600;font-size:15px;border:none;cursor:pointer;
+  transition:.4s var(--ease);font-family:'Bai Jamjuree';display:inline-flex;align-items:center;gap:8px}
+.btn-p{background:var(--gold);color:#23180a}
+.btn-p:hover{background:#fff;transform:translateY(-4px);box-shadow:0 16px 34px -12px rgba(0,0,0,.5)}
+.btn-g{background:transparent;color:#fff;border:1.5px solid rgba(255,255,255,.55)}
+.btn-g:hover{background:#fff;color:var(--green);transform:translateY(-4px)}
+.scrolldot{position:absolute;bottom:26px;left:50%;translate:-50% 0;z-index:3;width:24px;height:40px;
+  border:1.5px solid rgba(255,255,255,.5);border-radius:14px}
+.scrolldot::after{content:'';position:absolute;top:8px;left:50%;translate:-50% 0;width:4px;height:7px;
+  background:var(--gold);border-radius:3px;animation:dot 1.6s infinite}
+@keyframes dot{0%{opacity:0;transform:translate(-50%,0)}40%{opacity:1}100%{opacity:0;transform:translate(-50%,16px)}}
+
+/* ---------- MARQUEE ---------- */
+.mq{background:var(--green);color:#EAF4EC;padding:15px 0;overflow:hidden;white-space:nowrap;margin:0 0 70px}
+.mq div{display:inline-block;animation:slide 28s linear infinite;font-family:'Bai Jamjuree';font-size:17px;letter-spacing:1px}
+.mq span{margin:0 26px;opacity:.9}.mq b{color:var(--gold)}
+@keyframes slide{to{transform:translateX(-50%)}}
+
+/* ---------- SECTION ---------- */
+section{padding:60px 0}
+.head{text-align:center;max-width:680px;margin:0 auto 48px}
+.kicker{color:var(--clay);font-size:12.5px;letter-spacing:4px;font-weight:600;margin-bottom:12px}
+.head h2{font-size:clamp(27px,4.4vw,44px);margin-bottom:14px}
+.head p{color:var(--muted);font-size:15.5px}
+.rv{opacity:0;transform:translateY(42px);transition:.95s var(--ease)}
+.rv.in{opacity:1;transform:none}
+
+/* ---------- GRID CARDS ---------- */
+.grid{display:grid;gap:22px}
+.g2{grid-template-columns:repeat(auto-fit,minmax(340px,1fr))}
+.g3{grid-template-columns:repeat(auto-fill,minmax(285px,1fr))}
+.g4{grid-template-columns:repeat(auto-fill,minmax(220px,1fr))}
+.card{background:var(--white);border-radius:var(--r);overflow:hidden;box-shadow:0 6px 26px -16px rgba(0,0,0,.28);
+  transition:.55s var(--ease);cursor:pointer;position:relative}
+.card:hover{transform:translateY(-12px);box-shadow:var(--shadow)}
+.card .ph{height:215px;overflow:hidden;position:relative}
+.card .ph img{height:100%;width:100%;object-fit:cover;transition:1.1s var(--ease)}
+.card:hover .ph img{transform:scale(1.14)}
+.tag{position:absolute;top:13px;left:13px;background:rgba(255,255,255,.93);padding:5px 14px;border-radius:20px;
+  font-size:11.5px;font-weight:600;color:var(--green);z-index:2}
+.card .bd{padding:20px}
+.card h3{font-size:19px;margin-bottom:7px}
+.card p{font-size:14px;color:var(--muted)}
+.more{margin-top:13px;font-size:13px;color:var(--clay);font-weight:600;display:inline-flex;gap:6px;align-items:center}
+.card:hover .more span{transform:translateX(6px)}
+.more span{transition:.4s var(--ease)}
+
+/* feature icon cards */
+.feat{background:#fff;border-radius:var(--r);padding:30px 24px;text-align:center;transition:.55s var(--ease);
+  border:1px solid rgba(27,67,50,.08)}
+.feat:hover{transform:translateY(-10px);background:var(--green);color:#fff;box-shadow:var(--shadow)}
+.feat:hover p{color:rgba(255,255,255,.8)}
+.feat .ico{width:62px;height:62px;margin:0 auto 16px;border-radius:50% 0 50% 50%;display:grid;place-items:center;
+  font-size:27px;background:linear-gradient(135deg,#E8F3EB,#FBF0DC);transition:.55s var(--ease)}
+.feat:hover .ico{transform:rotate(-130deg);background:var(--gold)}
+.feat:hover .ico i{display:block;transform:rotate(130deg)}
+.feat h3{font-size:18px;margin-bottom:8px}
+.feat p{font-size:13.6px;color:var(--muted)}
+
+/* ---------- STATS ---------- */
+.stats{background:var(--green);border-radius:var(--r);padding:52px 26px;color:#fff;
+  display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:26px;text-align:center}
+.stat b{font-family:'Bai Jamjuree';font-size:clamp(32px,5vw,50px);color:var(--gold);display:block}
+.stat p{font-size:13.5px;opacity:.82}
+
+/* ---------- FILTER ---------- */
+.filters{display:flex;gap:9px;justify-content:center;flex-wrap:wrap;margin-bottom:34px}
+.chip{padding:9px 21px;border-radius:30px;border:1.5px solid rgba(27,67,50,.18);background:transparent;
+  cursor:pointer;font-family:'Noto Sans Thai';font-size:14px;transition:.4s var(--ease);color:var(--ink)}
+.chip:hover{border-color:var(--green)}
+.chip.on{background:var(--green);color:#fff;border-color:var(--green)}
+.hide{display:none!important}
+
+/* ---------- TABS ---------- */
+.tabs{display:flex;gap:8px;overflow-x:auto;padding-bottom:10px;margin-bottom:30px;justify-content:center;flex-wrap:wrap}
+.tab{padding:11px 24px;border-radius:14px;background:#fff;border:1px solid rgba(27,67,50,.1);cursor:pointer;
+  font-family:'Bai Jamjuree';font-size:15px;transition:.4s var(--ease);white-space:nowrap}
+.tab.on{background:var(--gold);color:#23180a;transform:translateY(-3px);box-shadow:0 12px 26px -14px rgba(212,162,76,.9)}
+.pane{display:none;animation:fade .6s var(--ease)}
+.pane.on{display:grid}
+.split{display:grid;grid-template-columns:1fr 1fr;gap:34px;align-items:center}
+@media(max-width:820px){.split{grid-template-columns:1fr}}
+.split img{border-radius:var(--r);height:100%;min-height:290px;object-fit:cover;width:100%}
+.split h3{font-size:25px;margin-bottom:14px;color:var(--green)}
+.split p{color:var(--muted);margin-bottom:14px;font-size:15px}
+.ul{list-style:none;display:grid;gap:9px}
+.ul li{padding-left:26px;position:relative;font-size:14.5px}
+.ul li::before{content:'';position:absolute;left:0;top:10px;width:12px;height:12px;border-radius:50% 0 50% 50%;
+  background:var(--gold)}
+
+/* ---------- TIMELINE ---------- */
+.tl{position:relative;padding-left:34px;max-width:780px;margin:0 auto}
+.tl::before{content:'';position:absolute;left:8px;top:6px;bottom:6px;width:2px;
+  background:linear-gradient(var(--gold),var(--green2))}
+.tl-i{position:relative;margin-bottom:30px;background:#fff;padding:20px 24px;border-radius:16px;
+  box-shadow:0 6px 24px -18px rgba(0,0,0,.4)}
+.tl-i::before{content:'';position:absolute;left:-33px;top:24px;width:16px;height:16px;border-radius:50%;
+  background:var(--gold);border:3px solid var(--bg)}
+.tl-i b{color:var(--clay);font-family:'Bai Jamjuree';font-size:17px}
+.tl-i p{font-size:14.3px;color:var(--muted);margin-top:5px}
+
+/* ---------- GALLERY ---------- */
+.gal{columns:4;column-gap:16px}
+@media(max-width:1100px){.gal{columns:3}}
+@media(max-width:760px){.gal{columns:2}}
+@media(max-width:460px){.gal{columns:1}}
+.gi{break-inside:avoid;margin-bottom:16px;border-radius:16px;overflow:hidden;position:relative;cursor:zoom-in;
+  transition:.55s var(--ease);opacity:0;transform:scale(.94);box-shadow:0 6px 22px -16px rgba(0,0,0,.4)}
+.gi.in{opacity:1;transform:none}
+.gi img{transition:1s var(--ease)}
+.gi:hover img{transform:scale(1.09)}
+.gi .cap{position:absolute;inset:auto 0 0 0;padding:26px 15px 14px;color:#fff;font-size:13.5px;
+  background:linear-gradient(transparent,rgba(0,0,0,.82));opacity:0;transform:translateY(12px);transition:.5s var(--ease)}
+.gi:hover .cap{opacity:1;transform:none}
+.del{position:absolute;top:9px;right:9px;background:var(--clay);color:#fff;border:none;width:30px;height:30px;
+  border-radius:50%;cursor:pointer;opacity:0;transition:.4s;z-index:3;font-size:15px}
+.gi:hover .del{opacity:1}
+#lb{position:fixed;inset:0;background:rgba(10,20,15,.96);z-index:980;display:none;place-items:center;padding:26px}
+#lb.on{display:grid;animation:fade .4s}
+#lb img{max-height:82vh;border-radius:14px;animation:pop .5s var(--ease)}
+@keyframes pop{from{transform:scale(.9);opacity:0}to{transform:none;opacity:1}}
+#lb .x,#lb .pv,#lb .nx{position:absolute;background:rgba(255,255,255,.12);border:none;color:#fff;cursor:pointer;
+  width:52px;height:52px;border-radius:50%;font-size:22px;transition:.35s}
+#lb .x:hover,#lb .pv:hover,#lb .nx:hover{background:var(--gold);color:#23180a}
+#lb .x{top:22px;right:22px}#lb .pv{left:22px;top:50%}#lb .nx{right:22px;top:50%}
+#lbc{position:absolute;bottom:26px;left:50%;translate:-50% 0;color:#fff;font-size:14px;text-align:center}
+
+/* ---------- ACCORDION ---------- */
+.ac{background:#fff;border-radius:16px;margin-bottom:11px;overflow:hidden;
+  box-shadow:0 5px 22px -18px rgba(0,0,0,.4)}
+.ac h4{padding:17px 22px;cursor:pointer;display:flex;justify-content:space-between;align-items:center;
+  font-size:16.5px;transition:.35s}
+.ac h4:hover{background:#F3F8F4}
+.ac h4 i{transition:.45s var(--ease);font-style:normal;color:var(--gold);font-size:20px}
+.ac.on h4{background:var(--green);color:#fff}
+.ac.on h4 i{transform:rotate(45deg);color:var(--gold)}
+.ac .in{max-height:0;overflow:hidden;transition:.6s var(--ease)}
+.ac .in div{padding:18px 22px;font-size:14.5px;color:var(--muted)}
+
+/* ---------- PRICE ---------- */
+.pk{background:#fff;border-radius:var(--r);padding:32px 26px;transition:.55s var(--ease);
+  border:2px solid transparent;position:relative}
+.pk:hover{transform:translateY(-12px);border-color:var(--gold);box-shadow:var(--shadow)}
+.pk.hot{background:var(--green);color:#fff}
+.pk.hot .ul li{color:rgba(255,255,255,.88)}
+.pk .pr{font-family:'Bai Jamjuree';font-size:38px;color:var(--gold);margin:12px 0 18px}
+.pk .pr small{font-size:14px;color:var(--muted)}
+.hotlab{position:absolute;top:-13px;right:22px;background:var(--clay);color:#fff;padding:5px 16px;
+  border-radius:20px;font-size:12px}
+
+/* ---------- FORM ---------- */
+.form{background:#fff;border-radius:var(--r);padding:34px;box-shadow:var(--shadow)}
+.fg{margin-bottom:17px}
+.fg label{font-size:13.5px;font-weight:600;display:block;margin-bottom:6px}
+.fg input,.fg select,.fg textarea{width:100%;padding:13px 16px;border:1.5px solid #E2E8E4;border-radius:12px;
+  font-family:'Noto Sans Thai';font-size:14.5px;transition:.35s;background:#FCFDFC}
+.fg input:focus,.fg select:focus,.fg textarea:focus{outline:none;border-color:var(--gold);
+  box-shadow:0 0 0 4px rgba(212,162,76,.16)}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:15px}
+@media(max-width:600px){.row2{grid-template-columns:1fr}}
+
+/* ---------- FOOTER ---------- */
+footer{background:var(--green);color:#D8E8DC;margin-top:80px;padding:60px 0 24px}
+.fgrid{display:grid;grid-template-columns:1.6fr 1fr 1fr 1.2fr;gap:34px}
+@media(max-width:860px){.fgrid{grid-template-columns:1fr 1fr}}
+footer h4{color:#fff;margin-bottom:15px;font-size:16.5px}
+footer a{font-size:14px;display:block;padding:4px 0;opacity:.82;transition:.35s}
+footer a:hover{opacity:1;color:var(--gold);transform:translateX(5px)}
+.fbot{border-top:1px solid rgba(255,255,255,.14);margin-top:38px;padding-top:20px;text-align:center;
+  font-size:12.8px;opacity:.65}
+.toast{position:fixed;bottom:26px;left:50%;translate:-50% 0;background:var(--green);color:#fff;
+  padding:14px 28px;border-radius:40px;z-index:995;opacity:0;transition:.5s var(--ease);pointer-events:none}
+.toast.on{opacity:1;transform:translateY(-10px)}
+</style>
+</head>
+<body>
+
+<div id="preload"><div style="text-align:center"><div class="leaf"></div><p>บ้านไทยพัฒนา • นาสัก • ชุมพร</p></div></div>
+<div id="bar"></div><div id="cursor"></div><div id="swipe"></div>
+<div class="toast" id="toast"></div>
+
+<!-- ============ HEADER ============ -->
+<header id="hd"><div class="wrap nav">
+  <div class="logo" onclick="go('home')">
+    <span>ทพ</span>
+    <span><b>บ้านไทยพัฒนา</b><small>หมู่ 7 ต.นาสัก อ.สวี จ.ชุมพร</small></span>
+  </div>
+  <nav><ul id="menu">
+    <li><a href="#" class="on" data-p="home">หน้าแรก</a></li>
+    <li><a href="#" data-p="about">รู้จักหมู่บ้าน</a></li>
+    <li><a href="#" data-p="places">ที่เที่ยว</a></li>
+    <li><a href="#" data-p="life">วิถีชีวิต</a></li>
+    <li><a href="#" data-p="otop">ของดีชุมชน</a></li>
+    <li><a href="#" data-p="gallery">แกลเลอรี</a></li>
+    <li><a href="#" data-p="event">ปฏิทินกิจกรรม</a></li>
+    <li><a href="#" data-p="trip">เที่ยว &amp; พัก</a></li>
+    <li><a href="#" data-p="contact">ติดต่อ</a></li>
+  </ul></nav>
+  <div class="burger" id="bg"><i></i><i></i><i></i></div>
+</div></header>
+
+<main class="wrap">
+
+<!-- ============ 1. HOME ============ -->
+<div class="page live" id="home">
+  <div class="hero">
+    <div class="hero-bg" id="hbg"></div>
+    <div class="hero-in">
+      <div class="badge">CHUMPHON • SAWI • NA SAK M.7</div>
+      <h1><span class="reveal-w"><span>บ้านไทยพัฒนา</span></span>
+          <span class="reveal-w"><span style="animation-delay:.12s"><em>วิถีสวน วิถีใต้</em></span></span></h1>
+      <p>หมู่บ้านเล็ก ๆ เชิงเขาฝั่งตะวันตกของอำเภอสวี ที่หล่อเลี้ยงด้วยสวนทุเรียน กาแฟโรบัสต้า
+         ปาล์มและยางพารา — มาใช้ชีวิตช้า ๆ กับคนที่นี่ ตื่นมาฟังเสียงนก เดินสวน ชิมกาแฟคั่วมือ
+         และกินข้าวเย็นใต้ร่มไม้</p>
+      <div class="btns">
+        <button class="btn btn-p" onclick="go('places')">🌄 ดูที่เที่ยวทั้งหมด</button>
+        <button class="btn btn-g" onclick="go('trip')">แพ็กเกจเที่ยวชุมชน</button>
+      </div>
+    </div>
+    <div class="scrolldot"></div>
+  </div>
+</div>
+
+<div class="mq"><div id="mqin"></div></div>
+
+<div class="page live" id="home2">
+  <section>
+    <div class="head rv"><div class="kicker">WHY VISIT</div>
+      <h2>ทำไมต้องมา “บ้านไทยพัฒนา”</h2>
+      <p>ไม่ใช่แหล่งท่องเที่ยวสำเร็จรูป แต่เป็นหมู่บ้านที่ยังมีชีวิตจริง ๆ ให้คุณเข้าไปเป็นส่วนหนึ่ง</p></div>
+    <div class="grid g4" id="feats"></div>
+  </section>
+
+  <section>
+    <div class="head rv"><div class="kicker">HIGHLIGHT</div><h2>ไฮไลต์ที่ห้ามพลาด</h2>
+      <p>คัดมาให้แล้ว 3 อย่างที่คนมาครั้งแรกต้องได้ลอง</p></div>
+    <div class="grid g3" id="hilite"></div>
+  </section>
+
+  <section><div class="stats rv" id="stats"></div></section>
+
+  <section>
+    <div class="split rv">
+      <img src="https://picsum.photos/seed/durianfarm/900/700" alt="สวนทุเรียน">
+      <div>
+        <div class="kicker">OUR STORY</div>
+        <h3 style="font-size:32px;margin-bottom:16px">ชุมชนที่โตมาพร้อมกับสวน</h3>
+        <p>“ไทยพัฒนา” เป็นชื่อที่สะท้อนความตั้งใจของคนรุ่นบุกเบิกที่เข้ามาจับจองที่ทำกินเชิงเขา
+           แผ้วถางทำสวนกาแฟและยางพารา ก่อนจะขยับมาเป็นทุเรียน มังคุด เงาะ และปาล์มน้ำมันในรุ่นลูกหลาน</p>
+        <p>วันนี้เราเปิดบ้านให้คนนอกเข้ามาเรียนรู้ ไม่ใช่เพื่อขายทัวร์ แต่เพื่อให้ของดีในสวน
+           เดินทางถึงมือคนกินโดยตรง และให้ลูกหลานมีเหตุผลที่จะอยู่บ้าน</p>
+        <button class="btn btn-p" style="margin-top:12px" onclick="go('about')">อ่านประวัติเต็ม →</button>
+      </div>
+    </div>
+  </section>
+</div>
+
+<!-- ============ 2. ABOUT ============ -->
+<div class="page" id="about">
+  <section>
+    <div class="head rv"><div class="kicker">ABOUT US</div><h2>รู้จักบ้านไทยพัฒนา</h2>
+      <p>หมู่ที่ 7 ตำบลนาสัก อำเภอสวี จังหวัดชุมพร 86130 — อยู่ในเขตปกครองขององค์การบริหารส่วนตำบลนาสัก</p></div>
+    <div class="split rv">
+      <div>
+        <h3>ภูมิประเทศ &amp; ที่ตั้ง</h3>
+        <p>ตำบลนาสักอยู่ทางฝั่งตะวันตกของอำเภอสวี เป็นพื้นที่ลูกคลื่นลอนลาดสลับภูเขาและป่า
+           ชาวบ้านส่วนใหญ่ทำเกษตรกรรม ต่างจากฝั่งตะวันออกที่ติดทะเลอ่าวไทย
+           ทำให้ทริปเดียวสามารถ “เช้าเดินป่า เย็นดูทะเล” ได้ในวันเดียว</p>
+        <ul class="ul">
+          <li><b>ระยะทาง:</b> ห่างตัวเมืองชุมพรลงใต้ประมาณ 40–55 กม.</li>
+          <li><b>ภูมิอากาศ:</b> ร้อนชื้นแบบมรสุม ฝนชุกช่วง พ.ค.–พ.ย.</li>
+          <li><b>อาชีพหลัก:</b> สวนทุเรียน มังคุด เงาะ ปาล์มน้ำมัน ยางพารา กาแฟโรบัสต้า</li>
+          <li><b>ฤดูท่องเที่ยวดีที่สุด:</b> ธ.ค.–มี.ค. (อากาศดี) และ มิ.ย.–ส.ค. (ฤดูผลไม้)</li>
+          <li><b>ศาสนา:</b> พุทธเป็นหลัก มีวัดนาสักเป็นศูนย์รวมใจของตำบล</li>
+        </ul>
+      </div>
+      <img src="https://picsum.photos/seed/nasakvalley/900/760" alt="ภูมิประเทศนาสัก">
+    </div>
+  </section>
+
+  <section>
+    <div class="head rv"><div class="kicker">TIMELINE</div><h2>เส้นทางการก่อตั้ง</h2>
+      <p>(ปี พ.ศ. เป็นข้อมูลตั้งต้น รอผู้ใหญ่บ้านยืนยันก่อนเผยแพร่จริง)</p></div>
+    <div class="tl" id="tl"></div>
+  </section>
+
+  <section>
+    <div class="head rv"><div class="kicker">STRUCTURE</div><h2>โครงสร้างชุมชน</h2></div>
+    <div class="grid g3" id="struct"></div>
+  </section>
+
+  <section>
+    <div class="head rv"><div class="kicker">MAP</div><h2>แผนที่หมู่บ้าน</h2>
+      <p>ปักหมุดจุดสำคัญในชุมชน — คลิกที่ปุ่มเพื่อเปิด Google Maps</p></div>
+    <div class="rv" style="border-radius:var(--r);overflow:hidden;box-shadow:var(--shadow)">
+      <iframe style="width:100%;height:420px;border:0" loading="lazy" allowfullscreen
+        src="https://www.google.com/maps?q=%E0%B8%95%E0%B8%B3%E0%B8%9A%E0%B8%A5%E0%B8%99%E0%B8%B2%E0%B8%AA%E0%B8%B1%E0%B8%81%20%E0%B8%AA%E0%B8%A7%E0%B8%B5%20%E0%B8%8A%E0%B8%B8%E0%B8%A1%E0%B8%9E%E0%B8%A3&output=embed"></iframe>
+    </div>
+  </section>
+</div>
+
+<!-- ============ 3. PLACES ============ -->
+<div class="page" id="places">
+  <section>
+    <div class="head rv"><div class="kicker">ATTRACTIONS</div><h2>สถานที่ท่องเที่ยวแนะนำ</h2>
+      <p>ทั้งในหมู่บ้านและรอบ ๆ ในรัศมีที่ขับรถถึงได้สบาย ๆ ภายในวันเดียว</p></div>
+    <div class="filters" id="pf"></div>
+    <div class="grid g3" id="plist"></div>
+  </section>
+</div>
+
+<!-- ============ 4. LIFE ============ -->
+<div class="page" id="life">
+  <section>
+    <div class="head rv"><div class="kicker">LOCAL WAY OF LIFE</div><h2>วิถีชีวิตคนบ้านไทยพัฒนา</h2>
+      <p>5 มิติที่ประกอบกันเป็นตัวตนของชุมชนเกษตรเชิงเขาแห่งนี้</p></div>
+    <div class="tabs" id="ltabs"></div>
+    <div id="lpanes"></div>
+  </section>
+  <section>
+    <div class="head rv"><div class="kicker">A DAY HERE</div><h2>หนึ่งวันในหมู่บ้าน</h2></div>
+    <div id="daily" style="max-width:820px;margin:0 auto"></div>
+  </section>
+</div>
+
+<!-- ============ 5. OTOP ============ -->
+<div class="page" id="otop">
+  <section>
+    <div class="head rv"><div class="kicker">LOCAL PRODUCTS</div><h2>ของดีบ้านไทยพัฒนา</h2>
+      <p>ซื้อตรงจากคนปลูก คนทำ — ราคาเป็นช่วงโดยประมาณ ปรับตามฤดูกาล</p></div>
+    <div class="grid g3" id="prods"></div>
+  </section>
+  <section>
+    <div class="rv" style="background:linear-gradient(120deg,var(--green),var(--green2));border-radius:var(--r);
+      padding:48px 34px;color:#fff;text-align:center">
+      <h2 style="font-size:30px;margin-bottom:12px">สั่งของจากสวนโดยตรง</h2>
+      <p style="opacity:.86;max-width:560px;margin:0 auto 22px">
+        ช่วงทุเรียน–มังคุดออก เราเปิดรับพรีออเดอร์ส่งตรงจากสวน ตัดแก่ได้มาตรฐาน ส่งทั่วประเทศ</p>
+      <button class="btn btn-p" onclick="go('contact')">ติดต่อสั่งซื้อ</button>
+    </div>
+  </section>
+</div>
+
+<!-- ============ 6. GALLERY ============ -->
+<div class="page" id="gallery">
+  <section>
+    <div class="head rv"><div class="kicker">GALLERY</div><h2>ภาพจากหมู่บ้าน</h2>
+      <p>ภาพถ่ายโดยคนในชุมชนและนักท่องเที่ยว — ผู้ดูแลระบบเพิ่มรูปใหม่ได้ตลอด</p></div>
+    <div class="filters" id="gf"></div>
+    <div style="text-align:center;margin-bottom:26px">
+      <button class="btn btn-p" id="adminBtn" onclick="adminToggle()">🔐 เข้าสู่ระบบผู้ดูแล</button>
+    </div>
+
+    <!-- ADMIN PANEL -->
+    <div id="adminBox" style="display:none;margin-bottom:34px">
+      <div class="form">
+        <h3 style="margin-bottom:18px;color:var(--green)">➕ เพิ่มรูปเข้าแกลเลอรี</h3>
+        <div class="row2">
+          <div class="fg"><label>อัปโหลดจากเครื่อง</label><input type="file" id="fFile" accept="image/*"></div>
+          <div class="fg"><label>หรือวางลิงก์รูป (URL)</label><input type="url" id="fUrl" placeholder="https://..."></div>
+        </div>
+        <div class="row2">
+          <div class="fg"><label>คำบรรยายภาพ *</label><input id="fCap" placeholder="เช่น เก็บทุเรียนเช้าตรู่ที่สวนลุงนิตย์"></div>
+          <div class="fg"><label>หมวดหมู่</label><select id="fCat">
+            <option>วิถีชีวิต</option><option>ธรรมชาติ</option><option>เกษตร/สวน</option>
+            <option>อาหาร</option><option>ประเพณี</option><option>ผลิตภัณฑ์</option></select></div>
+        </div>
+        <button class="btn btn-p" onclick="addPic()">บันทึกรูปภาพ</button>
+        <button class="btn btn-g" style="color:var(--ink);border-color:#ccc" onclick="resetGal()">คืนค่าเริ่มต้น</button>
+        <p style="font-size:12.5px;color:var(--muted);margin-top:14px">
+          * เดโมนี้เก็บข้อมูลใน localStorage ของเบราว์เซอร์ — ขึ้นระบบจริงให้ต่อ API + ที่เก็บไฟล์ (ดูหัวข้อ 4 ในคำอธิบาย)</p>
+      </div>
+    </div>
+
+    <div class="gal" id="galgrid"></div>
+  </section>
+</div>
+
+<!-- ============ 7. EVENTS ============ -->
+<div class="page" id="event">
+  <section>
+    <div class="head rv"><div class="kicker">CALENDAR</div><h2>ปฏิทินกิจกรรม &amp; ฤดูกาล</h2>
+      <p>มาช่วงไหนได้อะไร — วางแผนทริปให้ตรงกับสิ่งที่อยากเจอ</p></div>
+    <div id="acc" style="max-width:860px;margin:0 auto"></div>
+  </section>
+</div>
+
+<!-- ============ 8. TRIP ============ -->
+<div class="page" id="trip">
+  <section>
+    <div class="head rv"><div class="kicker">PACKAGES</div><h2>แพ็กเกจเที่ยวชุมชน</h2>
+      <p>ราคารวมค่าวิทยากรชุมชน อาหาร และกิจกรรม (ขั้นต่ำ 6 คน) — รายได้เข้ากองทุนหมู่บ้าน</p></div>
+    <div class="grid g3" id="pkgs"></div>
+  </section>
+  <section>
+    <div class="head rv"><div class="kicker">STAY</div><h2>ที่พัก &amp; โฮมสเตย์</h2></div>
+    <div class="grid g3" id="stay"></div>
+  </section>
+  <section>
+    <div class="head rv"><div class="kicker">GETTING HERE</div><h2>การเดินทาง</h2></div>
+    <div class="grid g2" id="route"></div>
+  </section>
+  <section>
+    <div class="head rv"><div class="kicker">TIPS</div><h2>เตรียมตัวก่อนมา</h2></div>
+    <div class="grid g4" id="tips"></div>
+  </section>
+</div>
+
+<!-- ============ 9. CONTACT ============ -->
+<div class="page" id="contact">
+  <section>
+    <div class="head rv"><div class="kicker">CONTACT</div><h2>ติดต่อ / จองทริป</h2>
+      <p>แจ้งความต้องการมาได้เลย ทีมชุมชนจะติดต่อกลับภายใน 1–2 วัน</p></div>
+    <div class="split rv" style="align-items:start">
+      <div class="form">
+        <div class="row2">
+          <div class="fg"><label>ชื่อ–สกุล *</label><input id="cN" placeholder="ชื่อผู้ติดต่อ"></div>
+          <div class="fg"><label>เบอร์โทร *</label><input id="cP" placeholder="0xx-xxx-xxxx"></div>
+        </div>
+        <div class="fg"><label>อีเมล</label><input id="cE" type="email" placeholder="you@email.com"></div>
+        <div class="row2">
+          <div class="fg"><label>เรื่องที่ติดต่อ</label><select id="cS">
+            <option>จองแพ็กเกจเที่ยวชุมชน</option><option>จองโฮมสเตย์</option>
+            <option>สั่งซื้อผลผลิต/ของฝาก</option><option>ดูงาน/ศึกษาดูงาน</option><option>อื่น ๆ</option></select></div>
+          <div class="fg"><label>จำนวนคน</label><input id="cQ" type="number" min="1" value="6"></div>
+        </div>
+        <div class="fg"><label>รายละเอียด</label><textarea id="cM" rows="4" placeholder="วันที่ต้องการมา กิจกรรมที่สนใจ ข้อจำกัดด้านอาหาร ฯลฯ"></textarea></div>
+        <button class="btn btn-p" style="width:100%" onclick="sendForm()">ส่งข้อความ</button>
+      </div>
+      <div>
+        <div class="grid" id="cinfo" style="gap:14px"></div>
+      </div>
+    </div>
+  </section>
+</div>
+
+</main>
+
+<!-- ============ FOOTER ============ -->
+<footer><div class="wrap">
+  <div class="fgrid">
+    <div>
+      <h4>บ้านไทยพัฒนา หมู่ 7</h4>
+      <p style="font-size:14px;opacity:.82">ตำบลนาสัก อำเภอสวี จังหวัดชุมพร 86130<br>
+      ท่องเที่ยวโดยชุมชน เพื่อชุมชน — รายได้กลับสู่ครัวเรือนในหมู่บ้านโดยตรง</p>
+    </div>
+    <div><h4>เมนู</h4>
+      <a href="#" data-p="about">รู้จักหมู่บ้าน</a><a href="#" data-p="places">ที่เที่ยว</a>
+      <a href="#" data-p="life">วิถีชีวิต</a><a href="#" data-p="gallery">แกลเลอรี</a></div>
+    <div><h4>บริการ</h4>
+      <a href="#" data-p="trip">แพ็กเกจทัวร์</a><a href="#" data-p="trip">โฮมสเตย์</a>
+      <a href="#" data-p="otop">ของฝาก</a><a href="#" data-p="event">ปฏิทินกิจกรรม</a></div>
+    <div><h4>ติดต่อ</h4>
+      <p style="font-size:14px;opacity:.82">โทร. 08x-xxx-xxxx (ผู้ใหญ่บ้าน)<br>
+      Line: @thaiphatthana<br>Facebook: บ้านไทยพัฒนา นาสัก<br>
+      หน่วยงานท้องถิ่น: อบต.นาสัก</p></div>
+  </div>
+  <div class="fbot">© 2569 วิสาหกิจชุมชนท่องเที่ยวบ้านไทยพัฒนา • ข้อมูลบางส่วนเป็นเนื้อหาตั้งต้น รอการยืนยันจากชุมชน</div>
+</div></footer>
+
+<!-- ============ LIGHTBOX ============ -->
+<div id="lb"><button class="x" onclick="closeLb()">✕</button>
+  <button class="pv" onclick="nav(-1)">‹</button><img id="lbi" alt="">
+  <button class="nx" onclick="nav(1)">›</button><div id="lbc"></div></div>
+
+<script>
+/* ===================== DATA ===================== */
+const FEATS=[
+ {i:'🌳',t:'สวนผลไม้เชิงเขา',d:'ทุเรียน มังคุด เงาะ ลองกอง เข้าสวนเก็บกินสด ๆ จากต้นในฤดูกาล'},
+ {i:'☕',t:'กาแฟโรบัสต้าชุมพร',d:'ชุมพรคือแหล่งโรบัสต้าเด่นที่สุดของไทย ลองคั่วมือ–ชงเองในสวน'},
+ {i:'💧',t:'น้ำตก & ถ้ำ',d:'พื้นที่ฝั่งตะวันตกของสวีเต็มไปด้วยป่าเขา น้ำตก และถ้ำหินปูน'},
+ {i:'🍲',t:'อาหารใต้ต้นตำรับ',d:'แกงไตปลา แกงส้มยอดมะพร้าว หมูชะมวง ผักเหนาะจากรั้วบ้าน'},
+ {i:'🧺',t:'หัตถกรรมพื้นบ้าน',d:'จักสานใบเตย/ก้านจาก ย้อมสีธรรมชาติ ทำของใช้ในครัวเรือน'},
+ {i:'🛕',t:'ประเพณีท้องถิ่น',d:'ชักพระ สารทเดือนสิบ ลอยกระทง และงานรำสักการะหลวงพ่อมุมวัดนาสัก 14 เม.ย.'},
+ {i:'🏡',t:'โฮมสเตย์บ้านจริง',d:'นอนบ้านชาวสวน กินข้าวร่วมโต๊ะ ไม่ใช่รีสอร์ตจัดฉาก'},
+ {i:'🌊',t:'ใกล้ทะเลสวี',d:'ขับรถต่ออีกไม่ไกลถึงหาดทรายรี–พระบรมธาตุสวี เที่ยวได้ทั้งเขาและเล'}];
+
+const HILITE=[
+ {img:'durianpick',tag:'ไฮไลต์ #1',t:'ตัดทุเรียนกับเจ้าของสวน',d:'เรียนดูหนาม ฟังเสียงเคาะ ตัดเอง ชิมเอง — เข้าใจว่าทำไมทุเรียนตัดแก่ถึงต่างกับที่ซื้อทั่วไป'},
+ {img:'coffeeroast',tag:'ไฮไลต์ #2',t:'คั่วกาแฟโรบัสต้าด้วยกระทะ',d:'ตั้งแต่เชอร์รีสีแดงจนเป็นเมล็ดคั่วหอม แล้วชงดริปกินริมสวน'},
+ {img:'southernfood',tag:'ไฮไลต์ #3',t:'ลงครัวใต้กับแม่บ้าน',d:'ตำเครื่องแกงสด ทำแกงไตปลาและขนมพื้นบ้าน กินด้วยกันแบบสำรับใต้'}];
+
+const STATS=[{n:1974,s:'พ.ศ.',t:'ปีที่เริ่มตั้งถิ่นฐาน'},{n:186,s:'',t:'ครัวเรือน'},
+ {n:640,s:'',t:'ประชากร (คน)'},{n:2800,s:'ไร่',t:'พื้นที่เกษตร'},{n:12,s:'',t:'ฐานเรียนรู้/จุดเช็กอิน'}];
+
+const TL=[
+ {y:'ก่อน พ.ศ. 2510',t:'ผืนป่าเชิงเขา',d:'พื้นที่ยังเป็นป่าดิบชื้น มีคนเข้ามาหาของป่าและทำไร่เลื่อนลอยเป็นครั้งคราว'},
+ {y:'พ.ศ. 2517',t:'รุ่นบุกเบิกเข้าจับจอง',d:'ครอบครัวชาวใต้จากสวี หลังสวน และต่างถิ่นเข้ามาแผ้วถางทำสวนกาแฟและยางพารา ตั้งชื่อกลุ่มบ้านว่า “ไทยพัฒนา”'},
+ {y:'พ.ศ. 2525',t:'ตั้งเป็นหมู่บ้านทางการ',d:'ได้รับการประกาศเป็นหมู่ที่ 7 ของตำบลนาสัก มีผู้ใหญ่บ้านคนแรก ถนนลูกรังเข้าถึงหมู่บ้าน'},
+ {y:'พ.ศ. 2535',t:'ยุคยางพารา–ปาล์ม',d:'ราคายางดี ชาวบ้านขยายพื้นที่ปลูก เริ่มมีไฟฟ้าและน้ำประปาภูเขาใช้ทั่วถึง'},
+ {y:'พ.ศ. 2548',t:'เปลี่ยนสู่ไม้ผล',d:'ปรับสวนบางส่วนเป็นทุเรียน มังคุด เงาะ ลองกอง เกิดกลุ่มผู้ปลูกไม้ผลของหมู่บ้าน'},
+ {y:'พ.ศ. 2560',t:'กลุ่มแปรรูป & เกษตรอินทรีย์',d:'ตั้งกลุ่มแม่บ้านแปรรูปผลผลิต ทุเรียนกวน กล้วยฉาบ กาแฟคั่วบด และเริ่มทำเกษตรปลอดภัย'},
+ {y:'พ.ศ. 2565–ปัจจุบัน',t:'ท่องเที่ยวโดยชุมชน',d:'รวมตัวเป็นวิสาหกิจชุมชนท่องเที่ยว เปิดโฮมสเตย์ ฐานเรียนรู้ และเส้นทางเที่ยวสวน'}];
+
+const STRUCT=[
+ {i:'🏛️',t:'ฝ่ายปกครอง',d:'ผู้ใหญ่บ้าน ผู้ช่วยผู้ใหญ่บ้าน และคณะกรรมการหมู่บ้าน (กม.) ดูแลงานทะเบียน ความสงบเรียบร้อย และประสานกับ อบต.นาสัก'},
+ {i:'🤝',t:'กลุ่มอาชีพ',d:'กลุ่มผู้ปลูกไม้ผล กลุ่มกาแฟ กลุ่มแม่บ้านแปรรูป กลุ่มออมทรัพย์ และกองทุนหมู่บ้าน'},
+ {i:'🧭',t:'วิสาหกิจท่องเที่ยว',d:'ทีมจัดการทริป วิทยากรฐานเรียนรู้ ทีมโฮมสเตย์ ทีมอาหาร และทีมสื่อ/แกลเลอรี'},
+ {i:'🩺',t:'สาธารณสุข',d:'อสม. ประจำหมู่บ้านดูแลสุขภาพเบื้องต้น เชื่อมกับ รพ.สต. ในตำบล'},
+ {i:'🙏',t:'ศาสนา–วัฒนธรรม',d:'ศาลาหมู่บ้านและวัดในพื้นที่เป็นศูนย์รวมงานบุญ งานประเพณี และการประชุมชาวบ้าน'},
+ {i:'🌱',t:'อนุรักษ์ทรัพยากร',d:'คณะกรรมการป่าชุมชนและกลุ่มดูแลแหล่งน้ำ ทำฝายชะลอน้ำและปลูกป่าประจำปี'}];
+
+const PLACES=[
+ {c:'ในหมู่บ้าน',img:'viewpointhill',t:'จุดชมวิวเขาหลังหมู่บ้าน',d:'เดินขึ้นราว 25 นาที เห็นทะเลสวนทุเรียนกับปาล์มสุดลูกหูลูกตา เช้ามืดมีโอกาสเจอทะเลหมอกบาง ๆ ช่วงปลายฝนต้นหนาว',
+  meta:['เปิดตลอด','เดิน 25 นาที','ไปเช้า 05.30 น.'],
+  full:'เส้นทางเป็นทางสวนสลับทางดิน ความชันปานกลาง ควรใส่รองเท้าผ้าใบและมีคนนำทางของหมู่บ้านไปด้วย ด้านบนมีศาลาไม้ไผ่ให้นั่งพัก ทีมชุมชนมักจัดชุดกาแฟดริปขึ้นไปชงให้ดื่มพร้อมพระอาทิตย์ขึ้น'},
+ {c:'ในหมู่บ้าน',img:'durianorchard',t:'สวนทุเรียนบ้านไทยพัฒนา',d:'ฐานเรียนรู้ไม้ผลของหมู่บ้าน เดินชมสวน ฟังวิธีดูทุเรียนแก่ และชิมผลสดตัดจากต้นในฤดูกาล',
+  meta:['มิ.ย.–ส.ค.','120–250 บาท/คน','จองล่วงหน้า'],
+  full:'เจ้าของสวนพาเดินอธิบายตั้งแต่การผสมเกสร ห่อผล ดูหนาม ฟังเสียงเคาะ จนถึงการตัดแก่ให้ได้เปอร์เซ็นต์แป้งที่เหมาะสม ปิดท้ายด้วยชุดชิมทุเรียน มังคุด และเงาะตามฤดู'},
+ {c:'ในหมู่บ้าน',img:'coffeegarden',t:'ฐานเรียนรู้กาแฟโรบัสต้า',d:'ชุมพรคือเมืองหลวงโรบัสต้าของไทย ที่นี่ให้ลองตั้งแต่เก็บเชอร์รี ตาก สี คั่วกระทะ จนถึงดริป',
+  meta:['ตลอดปี','ราว 2 ชม.','150 บาท/คน'],
+  full:'กิจกรรมเหมาะกับทุกวัย เด็กก็ทำได้ เรียนรู้ความต่างของโรบัสต้ากับอาราบิก้า วิธีคั่วอ่อน–คั่วเข้ม และได้กาแฟคั่วบดถุงเล็กกลับบ้านคนละถุง'},
+ {c:'ในหมู่บ้าน',img:'weavinghand',t:'ลานหัตถกรรมแม่บ้าน',d:'จักสาน ย้อมผ้าสีธรรมชาติจากเปลือกไม้และใบไม้ในสวน ทำของที่ระลึกชิ้นเดียวในโลกกลับบ้าน',
+  meta:['ทุกวัน','80–200 บาท','ได้ชิ้นงานกลับ'],
+  full:'ใช้วัสดุที่หาได้ในหมู่บ้าน เช่น ใบเตยหนาม ก้านจาก ไม้ไผ่ และสีย้อมจากเปลือกมังคุด แก่นขนุน ใบหูกวาง ทำผ้าเช็ดหน้า ย่ามเล็ก หรือกระเป๋าใบจิ๋ว'},
+ {c:'ธรรมชาติ',img:'thanlodcave',t:'ถ้ำธารลอด (ม.18 ต.นาสัก)',d:'แหล่งท่องเที่ยวเชิงอนุรักษ์ของตำบลนาสัก มีหินงอกหินย้อยและมีน้ำไหลผ่านถ้ำตลอดทั้งปี',
+  meta:['เข้าชมช่วงหน้าแล้ง','ก.พ.–พ.ค.','ต้องมีผู้นำทาง'],
+  full:'จุดเด่นคือธารน้ำที่ไหลลอดผ่านตัวถ้ำ ทำให้เข้าชมได้เฉพาะช่วงหน้าแล้งประมาณเดือนกุมภาพันธ์เป็นต้นไป ควรติดต่อผู้ดูแลในพื้นที่ล่วงหน้า เตรียมไฟฉายและรองเท้ากันลื่น'},
+ {c:'ธรรมชาติ',img:'phosaleewf',t:'น้ำตกโพธิ์สาลี (อ.สวี)',d:'น้ำตกชื่อดังระดับจังหวัดของอำเภอสวี มีน้ำตลอดทั้งปี น้ำใสมาก มีสิ่งอำนวยความสะดวกพร้อม',
+  meta:['ตลอดปี','ขับรถ ~30–40 นาที','เหมาะเล่นน้ำ'],
+  full:'เดินทางจากสี่แยกปฐมพรใช้ถนนเอเชีย 41 ลงใต้ราว 22 กม. กลับรถบริเวณค่ายลูกเสืออำเภอสวี แล้วเข้าถนนบ้านโพธิ์สาลีอีกราว 4 กม. เป็นจุดพักเล่นน้ำยอดนิยมของคนในพื้นที่'},
+ {c:'วัฒนธรรม',img:'watnasak',t:'วัดนาสัก & หลวงพ่อมุม',d:'วัดคู่ตำบลนาสัก ศูนย์รวมใจชาวบ้าน มีงานรำสักการะหลวงพ่อมุมทุกวันที่ 14 เมษายนของทุกปี',
+  meta:['เปิดทุกวัน','ม.1 ต.นาสัก','ฟรี'],
+  full:'นอกจากงานรำสักการะกลางเดือนเมษายน ทาง อบต.นาสักยังจัดกิจกรรมรดน้ำขอพรผู้สูงอายุในวันสงกรานต์ และงานสืบสานประเพณีลอยกระทงเป็นประจำทุกปี'},
+ {c:'วัฒนธรรม',img:'silkmulberry',t:'ศูนย์หม่อนไหมบ้านป่ากล้วย (ม.12)',d:'“ชิมหม่อน แลไหม วิถีไทยบ้านป่ากล้วย” ศูนย์เรียนรู้ปลูกหม่อน เลี้ยงไหม และทอผ้า มี 6 ฐานเรียนรู้',
+  meta:['ในตำบลนาสัก','6 ฐานเรียนรู้','จองเป็นหมู่คณะ'],
+  full:'เป็นศูนย์เรียนรู้การเพิ่มประสิทธิภาพการผลิตสินค้าเกษตร เครือข่ายด้านการปลูกหม่อน เลี้ยงไหม และทอผ้า เหมาะต่อเป็นจุดที่ 2 ของทริปหลังเที่ยวบ้านไทยพัฒนา'},
+ {c:'ใกล้เคียง',img:'boromthatsawi',t:'วัดพระบรมธาตุสวี',d:'โบราณสถานสำคัญคู่เมืองสวี ริมแม่น้ำสวี ขึ้นทะเบียนเป็นโบราณสถานของชาติ',
+  meta:['ขับรถ ~40 นาที','เปิดทุกวัน','ฟรี'],
+  full:'จากสามแยกตัวอำเภอสวี ใช้ทางหลวงหมายเลข 41 ไปทางตัวเมืองชุมพรประมาณ 2 กม. แล้วเลี้ยวซ้ายเข้าวัด เป็นจุดที่คนชุมพรถือว่าต้องมาไหว้สักครั้ง'},
+ {c:'ใกล้เคียง',img:'saireebeach',t:'หาดทรายรี สวี',d:'ชายหาดเงียบสงบฝั่งตะวันออกของอำเภอสวี ปิดท้ายทริป “เช้าเขา–เย็นเล” ได้ลงตัว',
+  meta:['ขับรถ ~50 นาที','เย็น–พระอาทิตย์ตก','ฟรี'],
+  full:'อำเภอสวีมีจุดเด่นคือฝั่งตะวันตกเป็นภูเขาและป่า ส่วนฝั่งตะวันออกติดทะเลอ่าวไทย ทำให้ทริปเดียวได้ครบทั้งสองบรรยากาศ'}];
+
+const LIFE=[
+ {k:'เกษตรกรรม',img:'farmlife',h:'สวนคือหัวใจของหมู่บ้าน',
+  p:['ปฏิทินชีวิตของคนที่นี่ผูกกับต้นไม้ ไม่ใช่ปฏิทินแขวนผนัง ฤดูไหนออกดอก ฤดูไหนห่อผล ฤดูไหนตัด ทุกบ้านรู้ตรงกัน',
+     'เช้ามืดคือเวลากรีดยาง สาย ๆ เข้าสวนผลไม้ บ่ายเก็บปาล์ม เย็นรดน้ำต้นกล้า เป็นจังหวะที่ทำซ้ำจนกลายเป็นวัฒนธรรม'],
+  l:['ยางพารา — กรีดตี 2–6 เก็บน้ำยางตอนสาย','ปาล์มน้ำมัน — ตัดทะลายทุก 15–20 วัน',
+     'ทุเรียน มังคุด เงาะ ลองกอง — ออกช่วง มิ.ย.–ส.ค.','กาแฟโรบัสต้า — เก็บเชอร์รีช่วง ธ.ค.–ก.พ.',
+     'พืชผักสวนครัวและไม้ริมรั้วไว้กินเอง ไม่ต้องซื้อ']},
+ {k:'อาหารพื้นถิ่น',img:'southcurry',h:'สำรับใต้ รสจัด ของสด',
+  p:['อาหารที่นี่เผ็ดร้อนตามแบบปักษ์ใต้ แต่สมดุลด้วยผักเหนาะสดจากรั้วบ้าน ทุกมื้อจึงมีทั้งความจัดจ้านและความสดชื่น',
+     'เครื่องแกงตำเองทุกครั้ง ไม่ใช้ผงสำเร็จ กะปิและไตปลาเป็นของแลกเปลี่ยนจากญาติฝั่งทะเลสวี'],
+  l:['แกงไตปลา — ราชาของสำรับใต้ รสเค็มเผ็ดกลมกล่อม','แกงส้มปลากับยอดมะพร้าว/หน่อไม้ดอง',
+     'หมูชะมวง — เปรี้ยวหอมจากใบชะมวงในสวน','ผัดสะตอกุ้งสด และน้ำพริกกะปิผักเหนาะ',
+     'ขนมพื้นบ้าน: ขนมโค ขนมด้วง ข้าวเหนียวห่อกล้วย']},
+ {k:'หัตถกรรม',img:'basketcraft',h:'ของใช้ที่เกิดจากสิ่งรอบตัว',
+  p:['งานหัตถกรรมของหมู่บ้านไม่ได้เริ่มจากการอยากขาย แต่เริ่มจากความจำเป็น ต้องมีตะกร้าใส่ผลไม้ ต้องมีเสื่อปูนั่ง ต้องมีไม้กวาด',
+     'เมื่อมีคนนอกเข้ามาเยี่ยม สิ่งเหล่านี้จึงกลายเป็นทั้งของที่ระลึกและกิจกรรมเรียนรู้'],
+  l:['จักสานจากใบเตยหนาม ก้านจาก และไม้ไผ่','ย้อมสีธรรมชาติจากเปลือกมังคุด แก่นขนุน ใบหูกวาง',
+     'ไม้กวาดดอกหญ้าและไม้กวาดทางมะพร้าว','งานแปรรูปกะลามะพร้าวเป็นภาชนะ',
+     'ป้ายไม้ ของตกแต่งจากไม้ยางพาราเก่า']},
+ {k:'ประเพณี–ความเชื่อ',img:'templefest',h:'บุญ ประเพณี และการรวมใจ',
+  p:['ปีหนึ่งมีงานบุญที่คนทั้งหมู่บ้านต้องมาเจอกันหลายครั้ง ซึ่งทำหน้าที่ยึดโยงคนรุ่นเก่ากับรุ่นใหม่ไว้ด้วยกัน',
+     'งานประเพณีระดับตำบลที่โดดเด่นคือรำสักการะหลวงพ่อมุมวัดนาสักทุกวันที่ 14 เมษายน และงานลอยกระทงที่ อบต.นาสักจัดเป็นประจำ'],
+  l:['สารทเดือนสิบ (ก.ย.–ต.ค.) — ทำบุญให้บรรพบุรุษ จัดหฺมฺรับ','ชักพระ / ลากพระ หลังออกพรรษา',
+     'สงกรานต์ — รดน้ำขอพรผู้สูงอายุ','ลอยกระทง — สืบสานร่วมกับ อบต.นาสัก',
+     'ทำบุญหมู่บ้าน/ไหว้แม่ย่านางสวน ก่อนเปิดฤดูเก็บเกี่ยว']},
+ {k:'ภูมิปัญญา',img:'herblocal',h:'ความรู้ที่ส่งต่อด้วยปาก ไม่ใช่ตำรา',
+  p:['คนเฒ่าคนแก่ที่นี่ดูฟ้าออกว่าฝนจะมาไหม ดมกลิ่นดินรู้ว่าควรใส่ปุ๋ยเมื่อไร ความรู้พวกนี้ไม่มีในหนังสือ แต่ยังใช้ได้จริง',
+     'ปัจจุบันชุมชนเริ่มบันทึกเป็นคลิปและเอกสาร เพื่อไม่ให้หายไปพร้อมรุ่นผู้สูงอายุ'],
+  l:['สมุนไพรพื้นบ้าน: ไพล ขมิ้น ฟ้าทะลายโจร ย่านาง','การทำน้ำหมักชีวภาพและปุ๋ยหมักจากเศษสวน',
+     'ดูฤกษ์–ดูฝนแบบชาวสวน ก่อนตัดสินใจห่อผล/ตัดผล','การทำฝายชะลอน้ำและดูแลป่าต้นน้ำ',
+     'นวดแผนไทยพื้นบ้านและการประคบสมุนไพร']}];
+
+const DAILY=[
+ {t:'05.00 น. — เสียงแรกของวัน',d:'ไฟหน้าผากส่องทางเข้าสวนยาง เสียงมีดกรีดเฉือนเปลือกดังเป็นจังหวะ อากาศเย็นที่สุดของวันคือเวลาทำงานที่ดีที่สุด'},
+ {t:'07.30 น. — มื้อเช้าหน้าบ้าน',d:'ข้าวต้ม กาแฟโรบัสต้าคั่วเข้ม ขนมจีนน้ำยาปักษ์ใต้ พร้อมข่าวสารประจำวันจากเพื่อนบ้านที่เดินผ่าน'},
+ {t:'09.00 น. — เข้าสวนผลไม้',d:'ตรวจผลทุเรียน ดูแมลง ห่อผล ตัดหญ้า หรือตัดปาล์มตามรอบ งานในสวนไม่เคยหมด'},
+ {t:'12.00 น. — พักใต้ร่มไม้',d:'ห่อข้าวมากินในสวน น้ำพริก ผักเหนาะ ปลาทอด นอนเปลพักสักครู่ก่อนลุยต่อ'},
+ {t:'15.00 น. — ตลาดนัดและศาลาหมู่บ้าน',d:'วันที่มีตลาดนัด คนทั้งหมู่บ้านไปเจอกัน ซื้อของสด แลกข่าว คุยเรื่องราคาผลผลิต'},
+ {t:'18.00 น. — มื้อเย็นร่วมโต๊ะ',d:'สำรับใต้ครบชุด กินพร้อมหน้ากันทั้งบ้าน เด็ก ๆ เล่นลานหน้าบ้าน'},
+ {t:'20.00 น. — คืนที่เงียบ',d:'ไม่มีแสงสีรบกวน ได้ยินเสียงจิ้งหรีดกับกบ บางคืนฟ้าใสจะเห็นดาวเต็มท้องฟ้า'}];
+
+const PRODS=[
+ {img:'durianfresh',t:'ทุเรียนหมอนทอง (ตัดแก่)',p:'120–180 บาท/กก.',d:'ตัดตามเปอร์เซ็นต์แป้ง ไม่บ่มสารเร่ง สั่งพรีออเดอร์ช่วง มิ.ย.–ส.ค.',tag:'ตามฤดู'},
+ {img:'robustabag',t:'กาแฟโรบัสต้าคั่วบด',p:'180–250 บาท/250 ก.',d:'คั่วกลาง–เข้ม บอดี้หนัก เหมาะทำเอสเพรสโซและกาแฟโบราณ',tag:'ขายตลอดปี'},
+ {img:'mangosteenfr',t:'มังคุดผิวมัน',p:'60–120 บาท/กก.',d:'ราชินีผลไม้จากสวนเชิงเขา เนื้อขาวหวานอมเปรี้ยวกำลังดี',tag:'ตามฤดู'},
+ {img:'durianpaste',t:'ทุเรียนกวนแม่บ้าน',p:'90–150 บาท/กล่อง',d:'กวนมือ หวานน้อย เก็บได้นาน ของฝากยอดนิยมอันดับหนึ่ง',tag:'ขายตลอดปี'},
+ {img:'bananachip',t:'กล้วยฉาบ–เผือกฉาบ',p:'40–70 บาท/ถุง',d:'กรอบ ไม่อมน้ำมัน ทำใหม่ทุกสัปดาห์โดยกลุ่มแม่บ้าน',tag:'ขายตลอดปี'},
+ {img:'herbalbalm',t:'ลูกประคบ–น้ำมันไพล',p:'80–160 บาท',d:'สมุนไพรปลูกเองในหมู่บ้าน ตากแห้งและบรรจุเอง',tag:'ทำตามสั่ง'},
+ {img:'palmoilsoap',t:'สบู่น้ำมันปาล์ม–กาแฟ',p:'59–89 บาท/ก้อน',d:'ใช้กากกาแฟจากฐานเรียนรู้ผสม ขัดผิวอ่อน ๆ กลิ่นหอม',tag:'งานคราฟต์'},
+ {img:'pandanbasket',t:'ตะกร้า–ย่ามใบเตย',p:'150–450 บาท',d:'สานมือทีละใบ ลวดลายไม่ซ้ำ แข็งแรงใช้ได้จริง',tag:'งานคราฟต์'},
+ {img:'driedmango',t:'ผลไม้อบแห้งรวม',p:'70–120 บาท/ถุง',d:'ใช้ผลผลิตส่วนเกินในฤดู ลดของเหลือทิ้งในสวน',tag:'ตามฤดู'}];
+
+const MONTHS=[
+ {m:'มกราคม',t:'ฤดูกาแฟ & อากาศดีที่สุด',d:'ช่วงเก็บเชอร์รีกาแฟโรบัสต้า อากาศเย็นสบาย เหมาะเดินสวนและขึ้นจุดชมวิว มีโอกาสเจอหมอกบาง ๆ ตอนเช้า'},
+ {m:'กุมภาพันธ์',t:'เปิดฤดูถ้ำธารลอด',d:'น้ำในถ้ำลดลง เริ่มเข้าชมถ้ำธารลอดได้ ทุเรียนเริ่มออกดอก เป็นภาพสวนที่สวยอีกแบบ'},
+ {m:'มีนาคม',t:'ห่อผล–ดูแลสวน',d:'ชาวสวนเข้าสู่ช่วงดูแลผลอ่อน นักท่องเที่ยวได้ลองห่อผลและผสมเกสรด้วยตัวเอง'},
+ {m:'เมษายน',t:'สงกรานต์ & รำสักการะหลวงพ่อมุม',d:'14 เมษายนมีงานรำสักการะหลวงพ่อมุมวัดนาสัก และกิจกรรมรดน้ำขอพรผู้สูงอายุทั่วตำบล'},
+ {m:'พฤษภาคม',t:'ฝนแรก ป่าเขียว',d:'เริ่มเข้าฤดูฝน ป่าเขียวสด น้ำตกเริ่มมีน้ำมาก เหมาะถ่ายภาพธรรมชาติ'},
+ {m:'มิถุนายน',t:'เปิดฤดูทุเรียน 🔥',d:'ไฮซีซันของหมู่บ้าน ทุเรียน มังคุด เงาะเริ่มทยอยออก กิจกรรมเข้าสวนชิมผลไม้เปิดเต็มรูปแบบ'},
+ {m:'กรกฎาคม',t:'พีคสุดของผลไม้',d:'ผลไม้ออกพร้อมกันมากที่สุด ราคาดี ของสด แนะนำให้จองทริปล่วงหน้าอย่างน้อย 2 สัปดาห์'},
+ {m:'สิงหาคม',t:'ปลายฤดูผลไม้',d:'ยังมีทุเรียนและลองกอง เริ่มมีกิจกรรมแปรรูปผลผลิตส่วนเกิน เช่น กวน อบแห้ง'},
+ {m:'กันยายน',t:'สารทเดือนสิบ',d:'ประเพณีสำคัญของคนใต้ จัดหฺมฺรับทำบุญให้บรรพบุรุษ เป็นช่วงที่ลูกหลานกลับบ้านพร้อมหน้า'},
+ {m:'ตุลาคม',t:'ชักพระ–ออกพรรษา',d:'ฝนชุก ประเพณีลากพระหลังออกพรรษา ทริปช่วงนี้เน้นกิจกรรมในร่มและงานหัตถกรรม'},
+ {m:'พฤศจิกายน',t:'ลอยกระทง',d:'ร่วมงานสืบสานประเพณีลอยกระทงที่ อบต.นาสักจัดเป็นประจำทุกปี'},
+ {m:'ธันวาคม',t:'เริ่มไฮซีซันอากาศ',d:'ฝนซา อากาศเย็น เริ่มเก็บกาแฟ เหมาะกับทริปเดินป่า ปั่นจักรยาน และแคมป์ในสวน'}];
+
+const PKGS=[
+ {n:'ครึ่งวัน • แลสวน',pr:'450',u:'บาท/คน',hot:0,l:['เดินชมสวนผลไม้กับเจ้าของสวน','ฐานเรียนรู้กาแฟโรบัสต้า (ชง–ชิม)','ของว่างพื้นบ้าน + เครื่องดื่ม','ของที่ระลึก 1 ชิ้น','ระยะเวลา 3–4 ชั่วโมง']},
+ {n:'1 วัน • วิถีไทยพัฒนา',pr:'1,250',u:'บาท/คน',hot:1,l:['ทุกอย่างในแพ็กเกจครึ่งวัน','ขึ้นจุดชมวิวเขาหลังหมู่บ้าน','ลงครัวทำอาหารใต้ + มื้อกลางวันสำรับใต้','เวิร์กช็อปหัตถกรรม/ย้อมสีธรรมชาติ','ชุดผลไม้ตามฤดู + ของฝากกลับบ้าน']},
+ {n:'2 วัน 1 คืน • นอนบ้านชาวสวน',pr:'2,400',u:'บาท/คน',hot:0,l:['ทุกอย่างในแพ็กเกจ 1 วัน','พักโฮมสเตย์ในหมู่บ้าน 1 คืน','อาหาร 4 มื้อ + กาแฟเช้าริมสวน','ชมดาว/ล้อมวงคุยกับผู้เฒ่าในหมู่บ้าน','เที่ยวต่อถ้ำธารลอดหรือน้ำตกในพื้นที่']}];
+
+const STAY=[
+ {img:'homestay1',t:'โฮมสเตย์บ้านสวนกลาง',d:'บ้านไม้ยกพื้น 2 ห้องนอน ระเบียงมองเห็นสวนทุเรียน พัดลม น้ำอุ่น',meta:'450–600 บาท/คน/คืน • รวมอาหารเช้า'},
+ {img:'homestay2',t:'เรือนพักริมลำห้วย',d:'ห้องพักแยกหลัง เสียงน้ำไหลตลอดคืน เหมาะสำหรับคู่รักหรือคนอยากอยู่เงียบ ๆ',meta:'600–800 บาท/คน/คืน • รวมอาหารเช้า'},
+ {img:'campsite1',t:'ลานกางเต็นท์ในสวน',d:'พื้นที่ราบใต้ร่มไม้ มีห้องน้ำรวมและจุดก่อไฟ นำเต็นท์มาเองหรือเช่าได้',meta:'150 บาท/คน • เช่าเต็นท์ 300 บาท'}];
+
+const ROUTE=[
+ {i:'🚗',t:'รถยนต์ส่วนตัว',d:'จากกรุงเทพฯ ใช้ทางหลวงหมายเลข 4 ต่อด้วยทางหลวงหมายเลข 41 มุ่งหน้าชุมพร ระยะทางรวมราว 460–500 กม. ใช้เวลาประมาณ 6–7 ชั่วโมง เมื่อถึงอำเภอสวี เลี้ยวเข้าเส้นทางสู่ตำบลนาสัก ตามป้ายบอกทางหมู่บ้าน ทีมชุมชนส่งพิกัดให้ล่วงหน้าเมื่อยืนยันการจอง'},
+ {i:'🚆',t:'รถไฟ',d:'ลงสถานีชุมพรหรือสถานีสวี (ขบวนที่จอด) จากนั้นต่อรถรับส่งของชุมชนเข้าหมู่บ้าน แจ้งเวลาถึงล่วงหน้าอย่างน้อย 1 วัน มีค่าบริการรับส่งตามระยะทาง'},
+ {i:'🚌',t:'รถโดยสาร',d:'รถทัวร์กรุงเทพฯ–ชุมพร/หลังสวน ลงที่ บขส.ชุมพร หรือจุดจอดอำเภอสวี แล้วต่อรถสองแถว/รถรับจ้างเข้าตำบลนาสัก'},
+ {i:'✈️',t:'เครื่องบิน',d:'บินลงสนามบินชุมพร (CJM) แล้วเช่ารถหรือใช้บริการรถรับส่งลงใต้มาทางอำเภอสวีประมาณ 50–60 กม.'}];
+
+const TIPS=[
+ {i:'👟',t:'รองเท้าเดินสวน',d:'ทางสวนเป็นดินและลื่นง่ายหลังฝน รองเท้าผ้าใบหรือรองเท้าบูตดีที่สุด'},
+ {i:'🧴',t:'ยากันยุง–กันแดด',d:'พื้นที่ร่มชื้นมียุงและริ้น ควรเตรียมยาทากันแมลงไปด้วย'},
+ {i:'💵',t:'เงินสดติดตัว',d:'บางร้านและบางบ้านยังไม่รับโอน ควรพกเงินสดย่อยไว้ซื้อของฝาก'},
+ {i:'🙏',t:'มารยาทในชุมชน',d:'ขออนุญาตก่อนถ่ายภาพคนในหมู่บ้าน และไม่เก็บผลไม้เองโดยไม่ถาม'},
+ {i:'☔',t:'เสื้อกันฝน',d:'ฝนชุกช่วง พ.ค.–พ.ย. ฝนตกเร็วหยุดเร็ว พกเสื้อกันฝนบางติดกระเป๋า'},
+ {i:'📶',t:'สัญญาณมือถือ',d:'บางจุดในสวนสัญญาณอ่อน ควรดาวน์โหลดแผนที่ออฟไลน์ล่วงหน้า'},
+ {i:'🥤',t:'ขยะกลับบ้าน',d:'หมู่บ้านไม่มีระบบจัดการขยะใหญ่ ช่วยกันนำขยะกลับหรือแยกทิ้งตามจุดที่จัดไว้'},
+ {i:'📅',t:'จองล่วงหน้า',d:'กิจกรรมส่วนใหญ่ใช้คนในชุมชนเป็นวิทยากร ควรจองล่วงหน้าอย่างน้อย 5–7 วัน'}];
+
+const CINFO=[
+ {i:'📍',t:'ที่ตั้ง',d:'บ้านไทยพัฒนา หมู่ที่ 7 ตำบลนาสัก อำเภอสวี จังหวัดชุมพร 86130'},
+ {i:'📞',t:'โทรศัพท์',d:'08x-xxx-xxxx (ผู้ใหญ่บ้าน) / 08x-xxx-xxxx (ประสานงานทริป)'},
+ {i:'💬',t:'LINE Official',d:'@thaiphatthana — ตอบเร็วที่สุด เหมาะสำหรับสอบถามคิวและราคา'},
+ {i:'📘',t:'Facebook',d:'เพจ “บ้านไทยพัฒนา นาสัก ชุมพร” — อัปเดตภาพและกิจกรรมประจำ'},
+ {i:'🏛️',t:'หน่วยงานท้องถิ่น',d:'องค์การบริหารส่วนตำบลนาสัก 1/2 หมู่ที่ 3 ตำบลนาสัก อำเภอสวี จังหวัดชุมพร 86130'},
+ {i:'🕐',t:'เวลาทำการ',d:'ทุกวัน 08.00–18.00 น. (นอกเวลาติดต่อผ่าน LINE ได้)'}];
+
+const SEED=[
+ {u:'https://picsum.photos/seed/g1/800/1000',c:'ตัดทุเรียนเช้าตรู่ในสวนหลังหมู่บ้าน',k:'เกษตร/สวน'},
+ {u:'https://picsum.photos/seed/g2/800/600',c:'แสงแรกจากจุดชมวิวเขาหลังหมู่บ้าน',k:'ธรรมชาติ'},
+ {u:'https://picsum.photos/seed/g3/800/900',c:'ยายเหนียนสานตะกร้าใบเตยที่ใต้ถุนบ้าน',k:'วิถีชีวิต'},
+ {u:'https://picsum.photos/seed/g4/800/700',c:'สำรับใต้: แกงไตปลาและผักเหนาะจากรั้วบ้าน',k:'อาหาร'},
+ {u:'https://picsum.photos/seed/g5/800/1100',c:'เชอร์รีกาแฟโรบัสต้าสุกแดงพร้อมเก็บ',k:'เกษตร/สวน'},
+ {u:'https://picsum.photos/seed/g6/800/620',c:'ลำห้วยกลางสวนหลังฝนตก',k:'ธรรมชาติ'},
+ {u:'https://picsum.photos/seed/g7/800/800',c:'งานบุญประจำปีที่ศาลาหมู่บ้าน',k:'ประเพณี'},
+ {u:'https://picsum.photos/seed/g8/800/950',c:'กาแฟคั่วบดของกลุ่มแม่บ้าน',k:'ผลิตภัณฑ์'},
+ {u:'https://picsum.photos/seed/g9/800/660',c:'กรีดยางตีสามกับไฟหน้าผาก',k:'วิถีชีวิต'},
+ {u:'https://picsum.photos/seed/g10/800/880',c:'มังคุดผิวมันเพิ่งเก็บจากต้น',k:'เกษตร/สวน'},
+ {u:'https://picsum.photos/seed/g11/800/600',c:'ขนมโคและข้าวเหนียวห่อกล้วยของแม่บ้าน',k:'อาหาร'},
+ {u:'https://picsum.photos/seed/g12/800/1020',c:'ผ้าย้อมเปลือกมังคุดตากลมในลานบ้าน',k:'ผลิตภัณฑ์'}];
+
+/* ===================== RENDER ===================== */
+const $=s=>document.querySelector(s), $=s=>[...document.querySelectorAll(s)];
+const img=s=>`https://picsum.photos/seed/${s}/800/640`;
+
+$('#mqin').innerHTML=(()=>{const t=`<span>🌿 <b>บ้านไทยพัฒนา</b> ม.7 ต.นาสัก อ.สวี จ.ชุมพร</span><span>🥭 ฤดูทุเรียน มิ.ย.–ส.ค.</span><span>☕ <b>กาแฟโรบัสต้า</b>ชุมพร</span><span>🏞️ ถ้ำธารลอด • น้ำตกโพธิ์สาลี</span><span>🏡 โฮมสเตย์บ้านชาวสวน</span><span>🍲 <b>สำรับใต้</b>ทำสดทุกมื้อ</span>`;return t+t;})();
+
+$('#feats').innerHTML=FEATS.map(f=>`<div class="feat rv"><div class="ico"><i>${f.i}</i></div>
+  <h3>${f.t}</h3><p>${f.d}</p></div>`).join('');
+
+$('#hilite').innerHTML=HILITE.map(h=>`<div class="card rv"><div class="ph">
+  <span class="tag">${h.tag}</span><img src="${img(h.img)}" alt="${h.t}"></div>
+  <div class="bd"><h3>${h.t}</h3><p>${h.d}</p>
+  <div class="more">ดูรายละเอียด <span>→</span></div></div></div>`).join('');
+
+$('#stats').innerHTML=STATS.map(s=>`<div class="stat"><b data-n="${s.n}">0</b><p>${s.t} ${s.s}</p></div>`).join('');
+
+$('#tl').innerHTML=TL.map(t=>`<div class="tl-i rv"><b>${t.y} — ${t.t}</b><p>${t.d}</p></div>`).join('');
+
+$('#struct').innerHTML=STRUCT.map(s=>`<div class="feat rv"><div class="ico"><i>${s.i}</i></div>
+  <h3>${s.t}</h3><p>${s.d}</p></div>`).join('');
+
+const CATS=['ทั้งหมด',...new Set(PLACES.map(p=>p.c))];
+$('#pf').innerHTML=CATS.map((c,i)=>`<button class="chip ${i==0?'on':''}" data-c="${c}">${c}</button>`).join('');
+$('#plist').innerHTML=PLACES.map((p,i)=>`<div class="card rv" data-c="${p.c}" onclick="openP(${i})">
+  <div class="ph"><span class="tag">${p.c}</span><img src="${img(p.img)}" alt="${p.t}"></div>
+  <div class="bd"><h3>${p.t}</h3><p>${p.d}</p>
+  <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:11px">
+  ${p.meta.map(m=>`<span style="font-size:11.5px;background:#F0F5F1;padding:4px 10px;border-radius:12px;color:var(--green)">${m}</span>`).join('')}</div>
+  <div class="more">อ่านเพิ่มเติม <span>→</span></div></div></div>`).join('');
+$('#pf .chip').forEach(b=>b.onclick=()=>{
+  $('#pf .chip').forEach(x=>x.classList.remove('on'));b.classList.add('on');
+  $('#plist .card').forEach(c=>{const m=b.dataset.c=='ทั้งหมด'||c.dataset.c==b.dataset.c;
+    c.classList.toggle('hide',!m);if(m){c.style.animation='none';c.offsetHeight;c.style.animation='fade .6s var(--ease)'}});});
+
+function openP(i){const p=PLACES[i];
+  $('#lbi').src=img(p.img);$('#lbc').innerHTML=`<b style="font-size:19px;font-family:Bai Jamjuree">${p.t}</b><br>
+  <span style="opacity:.85;max-width:700px;display:inline-block;margin-top:8px">${p.full}</span>`;
+  $('#lb').classList.add('on');cur=-1;}
+
+$('#ltabs').innerHTML=LIFE.map((l,i)=>`<button class="tab ${i==0?'on':''}" data-i="${i}">${l.k}</button>`).join('');
+$('#lpanes').innerHTML=LIFE.map((l,i)=>`<div class="pane ${i==0?'on':''}" data-i="${i}">
+  <div class="split"><img src="${img(l.img)}" alt="${l.k}"><div>
+  <h3>${l.h}</h3>${l.p.map(x=>`<p>${x}</p>`).join('')}
+  <ul class="ul">${l.l.map(x=>`<li>${x}</li>`).join('')}</ul></div></div></div>`).join('');
+$('#ltabs .tab').forEach(b=>b.onclick=()=>{
+  $('#ltabs .tab').forEach(x=>x.classList.remove('on'));b.classList.add('on');
+  $('#lpanes .pane').forEach(p=>p.classList.toggle('on',p.dataset.i==b.dataset.i));});
+
+$('#daily').innerHTML=DAILY.map(d=>`<div class="ac rv"><h4>${d.t}<i>+</i></h4><div class="in"><div>${d.d}</div></div></div>`).join('');
+
+$('#prods').innerHTML=PRODS.map(p=>`<div class="card rv"><div class="ph">
+  <span class="tag">${p.tag}</span><img src="${img(p.img)}" alt="${p.t}"></div>
+  <div class="bd"><h3>${p.t}</h3><p>${p.d}</p>
+  <div style="margin-top:12px;font-family:Bai Jamjuree;color:var(--clay);font-size:19px">${p.p}</div></div></div>`).join('');
+
+$('#acc').innerHTML=MONTHS.map(m=>`<div class="ac rv"><h4><span><b style="color:var(--gold)">${m.m}</b> — ${m.t}</span><i>+</i></h4>
+  <div class="in"><div>${m.d}</div></div></div>`).join('');
+
+$('#pkgs').innerHTML=PKGS.map(p=>`<div class="pk rv ${p.hot?'hot':''}">
+  ${p.hot?'<span class="hotlab">ยอดนิยม</span>':''}
+  <h3 style="font-size:21px">${p.n}</h3><div class="pr">${p.pr}<small> ${p.u}</small></div>
+  <ul class="ul">${p.l.map(x=>`<li>${x}</li>`).join('')}</ul>
+  <button class="btn ${p.hot?'btn-p':'btn-g'}" style="width:100%;margin-top:22px;${p.hot?'':'color:var(--ink);border-color:#ddd'}" onclick="go('contact')">จองแพ็กเกจนี้</button></div>`).join('');
+
+$('#stay').innerHTML=STAY.map(s=>`<div class="card rv"><div class="ph"><img src="${img(s.img)}" alt="${s.t}"></div>
+  <div class="bd"><h3>${s.t}</h3><p>${s.d}</p>
+  <div style="margin-top:11px;font-size:13px;color:var(--clay);font-weight:600">${s.meta}</div></div></div>`).join('');
+
+$('#route').innerHTML=ROUTE.map(r=>`<div class="card rv" style="cursor:default"><div class="bd" style="padding:28px">
+  <div style="font-size:34px;margin-bottom:10px">${r.i}</div><h3>${r.t}</h3><p>${r.d}</p></div></div>`).join('');
+
+$('#tips').innerHTML=TIPS.map(t=>`<div class="feat rv"><div class="ico"><i>${t.i}</i></div><h3>${t.t}</h3><p>${t.d}</p></div>`).join('');
+
+$('#cinfo').innerHTML=CINFO.map(c=>`<div class="card rv" style="cursor:default"><div class="bd" style="padding:20px;display:flex;gap:14px">
+  <div style="font-size:24px">${c.i}</div><div><h3 style="font-size:16px">${c.t}</h3><p style="font-size:13.6px">${c.d}</p></div></div></div>`).join('');
+
+/* accordion */
+document.addEventListener('click',e=>{const h=e.target.closest('.ac h4');if(!h)return;
+  const a=h.parentElement,o=a.classList.contains('on');
+  a.parentElement.querySelectorAll('.ac').forEach(x=>{x.classList.remove('on');x.querySelector('.in').style.maxHeight=0});
+  if(!o){a.classList.add('on');a.querySelector('.in').style.maxHeight=a.querySelector('.in').scrollHeight+'px'}});
+
+/* ===================== GALLERY + ADMIN ===================== */
+const KEY='btp_gallery_v1';
+let PICS=JSON.parse(localStorage.getItem(KEY)||'null')||SEED.slice();
+let isAdmin=sessionStorage.getItem('btp_admin')==='1', filterK='ทั้งหมด', cur=-1;
+const save=()=>localStorage.setItem(KEY,JSON.stringify(PICS));
+
+function drawFilters(){const ks=['ทั้งหมด',...new Set(PICS.map(p=>p.k))];
+  $('#gf').innerHTML=ks.map(k=>`<button class="chip ${k==filterK?'on':''}" onclick="setK('${k}')">${k}</button>`).join('');}
+function setK(k){filterK=k;drawFilters();drawGal();}
+function drawGal(){
+  const list=PICS.map((p,i)=>({...p,i})).filter(p=>filterK=='ทั้งหมด'||p.k==filterK);
+  $('#galgrid').innerHTML=list.map((p,n)=>`<div class="gi" style="transition-delay:${n*55}ms" onclick="openLb(${p.i})">
+    ${isAdmin?`<button class="del" onclick="event.stopPropagation();delPic(${p.i})">✕</button>`:''}
+    <img src="${p.u}" alt="${p.c}" loading="lazy"><div class="cap"><b>${p.c}</b><br><small style="opacity:.8">${p.k}</small></div></div>`).join('')
+    ||'<p style="text-align:center;color:var(--muted)">ยังไม่มีรูปในหมวดนี้</p>';
+  requestAnimationFrame(()=>$('#galgrid .gi').forEach(g=>g.classList.add('in')));
+}
+function adminToggle(){
+  if(isAdmin){isAdmin=false;sessionStorage.removeItem('btp_admin');
+    $('#adminBox').style.display='none';$('#adminBtn').textContent='🔐 เข้าสู่ระบบผู้ดูแล';drawGal();toast('ออกจากระบบแล้ว');return;}
+  const pw=prompt('รหัสผ่านผู้ดูแลระบบ (เดโม: nasak2569)');
+  if(pw==='nasak2569'){isAdmin=true;sessionStorage.setItem('btp_admin','1');
+    $('#adminBox').style.display='block';$('#adminBtn').textContent='🚪 ออกจากระบบผู้ดูแล';drawGal();toast('เข้าสู่ระบบสำเร็จ');}
+  else if(pw!==null) toast('รหัสผ่านไม่ถูกต้อง');
+}
+function addPic(){
+  const cap=$('#fCap').value.trim(), k=$('#fCat').value, url=$('#fUrl').value.trim(), f=$('#fFile').files[0];
+  if(!cap) return toast('กรุณาใส่คำบรรยายภาพ');
+  if(!url && !f) return toast('กรุณาเลือกไฟล์ หรือใส่ลิงก์รูป');
+  const push=src=>{PICS.unshift({u:src,c:cap,k});save();drawFilters();drawGal();
+    $('#fCap').value='';$('#fUrl').value='';$('#fFile').value='';toast('เพิ่มรูปเรียบร้อย ✓');};
+  if(f){const r=new FileReader();r.onload=e=>push(e.target.result);r.readAsDataURL(f);} else push(url);
+}
+function delPic(i){if(confirm('ลบรูปนี้ออกจากแกลเลอรี?')){PICS.splice(i,1);save();drawFilters();drawGal();toast('ลบรูปแล้ว');}}
+function resetGal(){if(confirm('คืนค่าแกลเลอรีเป็นชุดเริ่มต้น?')){PICS=SEED.slice();save();drawFilters();drawGal();toast('คืนค่าแล้ว');}}
+function openLb(i){cur=i;$('#lbi').src=PICS[i].u;$('#lbc').innerHTML=`<b>${PICS[i].c}</b><br><small style="opacity:.7">${PICS[i].k}</small>`;$('#lb').classList.add('on');}
+function closeLb(){$('#lb').classList.remove('on');}
+function nav(d){if(cur<0)return;cur=(cur+d+PICS.length)%PICS.length;openLb(cur);}
+$('#lb').onclick=e=>{if(e.target.id=='lb')closeLb()};
+document.onkeydown=e=>{if(!$('#lb').classList.contains('on'))return;
+  if(e.key=='Escape')closeLb();if(e.key=='ArrowRight')nav(1);if(e.key=='ArrowLeft')nav(-1);};
+if(isAdmin){$('#adminBox').style.display='block';$('#adminBtn').textContent='🚪 ออกจากระบบผู้ดูแล';}
+drawFilters();drawGal();
+
+/* ===================== ROUTER / UX ===================== */
+function go(p){
+  $('#swipe').classList.remove('go');void $('#swipe').offsetWidth;$('#swipe').classList.add('go');
+  setTimeout(()=>{
+    $('.page').forEach(x=>x.classList.remove('live'));
+    if(p=='home'){$('#home').classList.add('live');$('#home2').classList.add('live');$('.mq').style.display='block';}
+    else{const t=$('#'+p);if(t)t.classList.add('live');$('.mq').style.display='none';}
+    $('#menu a').forEach(a=>a.classList.toggle('on',a.dataset.p==p));
+    window.scrollTo({top:0,behavior:'instant'});
+    $('#menu').classList.remove('open');$('#bg').classList.remove('x');
+    setTimeout(reveal,60);
+  },420);
+}
+$('[data-p]').forEach(a=>a.onclick=e=>{e.preventDefault();go(a.dataset.p)});
+$('#bg').onclick=()=>{$('#menu').classList.toggle('open');$('#bg').classList.toggle('x')};
+
+function reveal(){$('.rv').forEach((el,i)=>{
+  const r=el.getBoundingClientRect();
+  if(r.top<innerHeight-70){setTimeout(()=>el.classList.add('in'),Math.min(i%9*75,600));}});}
+addEventListener('scroll',()=>{
+  const sc=scrollY;
+  $('#hd').classList.toggle('solid',sc>60);
+  $('#bar').style.width=(sc/(document.body.scrollHeight-innerHeight)*100)+'%';
+  const hb=$('#hbg'); if(hb) hb.style.transform=`scale(1.12) translateY(${sc*.28}px)`;
+  reveal();counts();
+},{passive:true});
+
+let counted=false;
+function counts(){const s=$('#stats');if(!s||counted)return;
+  if(s.getBoundingClientRect().top<innerHeight-100){counted=true;
+    $('#stats b').forEach(b=>{const t=+b.dataset.n;let c=0,st=t/60;
+      const iv=setInterval(()=>{c+=st;if(c>=t){c=t;clearInterval(iv)}
+        b.textContent=Math.floor(c).toLocaleString('th-TH')},22)});}}
+
+/* cursor */
+const cs=$('#cursor');
+addEventListener('mousemove',e=>{cs.style.left=(e.clientX-13)+'px';cs.style.top=(e.clientY-13)+'px'});
+document.addEventListener('mouseover',e=>{
+  cs.classList.toggle('big',!!e.target.closest('a,button,.card,.gi,.feat,.chip,.tab'))});
+
+/* hero parallax by mouse */
+addEventListener('mousemove',e=>{const h=$('#hbg');if(!h)return;
+  const x=(e.clientX/innerWidth-.5)*20,y=(e.clientY/innerHeight-.5)*16;
+  h.style.filter='none';h.style.marginLeft=x+'px';h.style.marginTop=y+'px';});
+
+/* toast + form */
+function toast(m){const t=$('#toast');t.textContent=m;t.classList.add('on');setTimeout(()=>t.classList.remove('on'),2600)}
+function sendForm(){
+  const n=$('#cN').value.trim(),p=$('#cP').value.trim();
+  if(!n) return toast('กรุณากรอกชื่อ–สกุล');
+  if(!/^0\d{8,9}$/.test(p.replace(/[-\s]/g,''))) return toast('เบอร์โทรไม่ถูกต้อง');
+  toast('ส่งข้อความเรียบร้อย ทีมชุมชนจะติดต่อกลับครับ ✓');
+  ['cN','cP','cE','cM'].forEach(i=>$('#'+i).value='');
+}
+
+/* boot */
+addEventListener('load',()=>{setTimeout(()=>{$('#preload').classList.add('done');reveal();counts()},700)});
+</script>
+</body>
+</html>
